@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "turno-noche",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["turno-noche/server.mjs"],
+      "port": 4747
+    }
+  ]
+}

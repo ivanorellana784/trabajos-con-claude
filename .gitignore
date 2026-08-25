@@ -1,0 +1,9 @@
+# Salida del runner nocturno: se genera sola y puede describir trabajo interno.
+# El repo es publico, asi que no se sube.
+bitacora/
+informes/
+
+# Dependencias y basura del sistema
+node_modules/
+Thumbs.db
+desktop.ini

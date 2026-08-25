@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "turnoNoche": true,
+  "ventana": {
+    "desde": 20,
+    "hasta": 8
+  },
+  "tareas": [
+    {
+      "id": "ejemplo1",
+      "titulo": "Ejemplo: inventario de la carpeta",
+      "prompt": "Revisa la carpeta de trabajo, haz un inventario de que hay dentro (archivos, tamanos, para que parece servir cada uno) y deja un resumen en informes/inventario.md. No modifiques ni borres nada.",
+      "carpeta": "C:/Users/iorel/Downloads/clau lunes",
+      "dia": "*",
+      "hora": 23,
+      "activa": false,
+      "repetir": true,
+      "creada": "2026-08-24T16:00:00"
+    }
+  ]
+}
