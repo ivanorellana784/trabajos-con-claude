@@ -1,36 +1,11 @@
 {
-  "cuando": "2026-09-04T21:01:12.764Z",
-  "vueltas": 378,
+  "cuando": "2026-09-04T21:01:19.793Z",
+  "vueltas": 9,
   "ultimas": [
-    {
-      "id": "arreglo-1",
-      "ok": true,
-      "que": "repo al dia ( 6 files changed, 100 insertions(+), 25 deletions(-))"
-    },
-    {
-      "id": "voz-1",
-      "ok": true,
-      "que": "  82 gestos de boca, sin voz."
-    },
-    {
-      "id": "baile-huaso-1",
-      "ok": true,
-      "que": "  Listo: 13 pasos."
-    },
-    {
-      "id": "arreglo-2",
-      "ok": false,
-      "por": "No pude conectar con VTube Studio en ws://127.0.0.1:8001.\n  1. Abre VTube Studio.\n  2. Engranaje (Ajustes) -> pestana API -> enciende \"Start API (allow plugins)\".\n  3. Si le cambiaste el puerto, dimelo con  VTS_URL=ws://127.0.0.1:PUERTO\n  (lo que fallo: connect ECONNREFUSED 127.0.0.1:8001)"
-    },
-    {
-      "id": "clavar-cara-1",
-      "ok": false,
-      "por": "no se que es \"titere\""
-    },
     {
       "id": "clavar-cara-2",
       "ok": false,
-      "por": "no se que es \"titere\""
+      "por": "Command failed: C:\\Program Files\\nodejs\\node.exe C:\\Users\\iorel\\Downloads\\clau lunes\\vtube-studio\\huaso\\titiritero.mjs clavar --tam 0.9 --y -0.05\n"
     }
   ],
   "informes": {}
