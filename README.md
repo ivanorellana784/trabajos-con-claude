@@ -10,6 +10,14 @@ nocturna, lee `agenda.json` y corre las tareas activas que tocan.
 
 Ver [`turno-noche/LEEME.md`](turno-noche/LEEME.md) para instalarlo y usarlo.
 
+## `vtube-studio/`
+
+El puente para que **Claude mueva tu avatar** en VTube Studio: dispara hotkeys, pone
+expresiones, carga modelos y lo coloca en pantalla, por la API pública del programa.
+Se enchufa a Claude Code como servidor MCP y corre en el PC donde está VTube Studio.
+
+Ver [`vtube-studio/LEEME.md`](vtube-studio/LEEME.md) para encenderlo y vincularlo.
+
 ---
 
 `bitacora/` e `informes/` no se versionan: son la salida del runner y se regeneran solas.
