@@ -1,6 +1,6 @@
 {
-  "cuando": "2026-09-04T19:27:37.393Z",
-  "vueltas": 34,
+  "cuando": "2026-09-04T19:51:13.779Z",
+  "vueltas": 119,
   "ultimas": [
     {
       "id": "arreglo-1",
@@ -16,6 +16,11 @@
       "id": "baile-huaso-1",
       "ok": true,
       "que": "  Listo: 13 pasos."
+    },
+    {
+      "id": "arreglo-2",
+      "ok": false,
+      "por": "No pude conectar con VTube Studio en ws://127.0.0.1:8001.\n  1. Abre VTube Studio.\n  2. Engranaje (Ajustes) -> pestana API -> enciende \"Start API (allow plugins)\".\n  3. Si le cambiaste el puerto, dimelo con  VTS_URL=ws://127.0.0.1:PUERTO\n  (lo que fallo: connect ECONNREFUSED 127.0.0.1:8001)"
     }
   ],
   "informes": {}
