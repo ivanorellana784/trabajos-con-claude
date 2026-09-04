@@ -113,6 +113,18 @@ const MALLAS = ['Cabeza', 'PeloFrente', 'OjoIzq', 'OjoDer', 'Boca', 'Torso', 'Br
 let siguienteItem = 1;
 let tokenEmitido = 'token-de-mentira-123';
 
+// Lee el ancho y alto de la cabecera IHDR de un PNG. VTube Studio rechaza
+// las imagenes fuera de rango, y sin mirarlas aqui el falso aceptaba cosas
+// que alli fallaban.
+function medidaPNG(base64) {
+  let b;
+  try { b = Buffer.from(base64, 'base64'); } catch { return null; }
+  const firma = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (b.length < 24 || !b.subarray(0, 8).equals(firma)) return null;
+  if (b.subarray(12, 16).toString() !== 'IHDR') return null;
+  return { ancho: b.readUInt32BE(16), alto: b.readUInt32BE(20) };
+}
+
 function responder(tipo, requestID, data) {
   return JSON.stringify({
     apiName: 'VTubeStudioPublicAPI',
@@ -254,6 +266,11 @@ function atender(mensaje, sesion) {
         return error(requestID, 156,
           'Cannot currently load items. This could be because the user has ' +
           'certain config/item windows open.');
+      }
+      const medida = medidaPNG(data.customDataBase64);
+      if (!medida || medida.ancho < 64 || medida.alto < 64 ||
+          medida.ancho > 2048 || medida.alto > 2048) {
+        return error(requestID, 157, 'Invalid custom image data was provided.');
       }
       if (!config.permisoImagenes) {
         return error(requestID, 155,

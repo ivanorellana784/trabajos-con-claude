@@ -132,18 +132,29 @@ console.log('\nVestir de huaso - pruebas\n');
 {
   const { texto, codigo } = await correr('comprobar');
   comprobar('comprobar recorre los cuatro eslabones',
-    ['VTube Studio responde', 'tiene permiso', 'modelo cargado', 'Load custom images']
+    ['VTube Studio responde', 'tiene permiso', 'modelo cargado', 'Cargar imagenes funciona']
       .every((t) => texto.includes(t)));
   comprobar('prueba el permiso de verdad, no lo supone', texto.includes('cargue una imagen y la quite'));
   comprobar('no deja basura en escena', !ITEMS.some((i) => i.fileName === 'huaso-prueba.png'));
   comprobar('con todo bien, dice el siguiente paso', texto.includes('poner huaso') && codigo === 0);
 }
 
+// 7b-bis. la imagen de sondeo tiene que valerle a VTube Studio.
+// Fue de 1x1 y la rechazaba, asi que comprobar culpaba al permiso de lo
+// que era culpa del propio sondeo.
+{
+  const { texto } = await correr('comprobar');
+  comprobar('el sondeo usa una imagen que VTube Studio acepta',
+    !texto.includes('Invalid custom image data'));
+  comprobar('el paso 4 se llama por lo que mide, no por el permiso',
+    texto.includes('Cargar imagenes funciona'));
+}
+
 // 7c. comprobar cuando falta el permiso: el caso que importa
 {
   config.permisoImagenes = false;
   const { texto, codigo } = await correr('comprobar');
-  comprobar('sin permiso lo marca como NO', /Load custom images"\s+NO/.test(texto));
+  comprobar('sin permiso lo marca como NO', /Cargar imagenes funciona\s+NO/.test(texto));
   comprobar('repite lo que dijo VTube Studio', texto.includes('does not have permission'));
   comprobar('y dice donde encenderlo', texto.includes('Config/Permissions')
     || texto.includes('config/permissions'));

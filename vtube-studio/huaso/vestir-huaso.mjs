@@ -47,6 +47,10 @@ function pista(mensaje = '') {
     return 'Enciende "Load custom images": Ajustes -> API -> plugin "Claude"\n' +
            '-> su boton de config/permissions -> Done.';
   }
+  if (m.includes('custom image data')) {
+    return 'La imagen no le vale a VTube Studio. No es el permiso: es el\n' +
+           'archivo. Suele ser por tamano fuera de rango o PNG corrupto.';
+  }
   if (m.includes('filename')) {
     return 'El nombre del archivo no le vale: solo letras, numeros y guiones,\n' +
            'terminado en .png y de 8 a 32 caracteres.';
@@ -103,9 +107,11 @@ async function instanciaDe(s, pieza) {
   return encontrado.instanceID;
 }
 
-// Un PNG de 1x1 transparente. Sirve para probar el permiso de imagenes de
-// verdad -cargando una y quitandola- en vez de suponer que esta concedido.
-const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=';
+// PNG transparente de 256x256 para probar la carga de imagenes de verdad.
+// Fue de 1x1 y VTube Studio lo rechazaba por diminuto ("Invalid custom image
+// data"), asi que la comprobacion acusaba al permiso de un fallo que era del
+// propio sondeo. Transparente no molesta, pero pequeno de mas si.
+const IMAGEN_PRUEBA = 'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAABFUlEQVR42u3BMQEAAADCoPVP7WsIoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAMBPAAB2ClDBAAAAABJRU5ErkJggg==';
 
 // Recorre la cadena entera y dice en que eslabon se rompe. Existe porque
 // "no carga nada" puede ser cinco cosas distintas y el mensaje suelto de
@@ -125,7 +131,7 @@ async function comprobar(s) {
     modelo.modelLoaded ? modelo.modelName : 'los items funcionan igual, pero no hay a quien clavarlos');
 
   // El unico eslabon que no se puede dar por sabido: se prueba cargando.
-  let permiso = false, motivo = '';
+  let carga = false, motivo = '';
   try {
     const r = await s.pedir('ItemLoadRequest', {
       fileName: 'huaso-prueba.png',
@@ -133,12 +139,12 @@ async function comprobar(s) {
       order: 30, failIfOrderTaken: false, smoothing: 0,
       censored: false, flipped: false, locked: false,
       unloadWhenPluginDisconnects: true,
-      customDataBase64: PIXEL,
+      customDataBase64: IMAGEN_PRUEBA,
       customDataAskUserFirst: true,
       customDataSkipAskingUserIfWhitelisted: true,
       customDataAskTimer: 20,
     }, 30_000);
-    permiso = true;
+    carga = true;
     await s.pedir('ItemUnloadRequest', {
       unloadAllInScene: false, unloadAllLoadedByThisPlugin: false,
       allowUnloadingItemsLoadedByUserOrOtherPlugins: false,
@@ -147,16 +153,15 @@ async function comprobar(s) {
   } catch (err) {
     motivo = err.message.split('\n')[0];
   }
-  linea(4, 'Permiso "Load custom images"', permiso,
-    permiso ? 'probado de verdad: cargue una imagen y la quite' : '');
+  linea(4, 'Cargar imagenes funciona', carga,
+    carga ? 'probado de verdad: cargue una imagen y la quite' : 'mira el motivo abajo');
 
-  if (permiso) {
+  if (carga) {
     salida('\n  Todo listo. Ya puedes:\n    node vestir-huaso.mjs poner huaso\n');
   } else {
     salida(`\n     VTube Studio dijo: ${motivo}`);
     const ayuda = pista(motivo) ||
-      'Enciende "Load custom images": Ajustes -> API -> plugin "Claude"\n' +
-      '-> su boton de config/permissions -> Done.';
+      'No reconozco esta negativa. Pasasela a Claude tal cual.';
     salida('');
     for (const linea of ayuda.split('\n')) salida(`     ${linea}`);
     salida('');
