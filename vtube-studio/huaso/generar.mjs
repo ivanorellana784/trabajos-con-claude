@@ -5,27 +5,9 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Resvg } from '@resvg/resvg-js';
 import { writePsd } from 'ag-psd';
-import { DEFS, LIENZO } from './huaso.mjs';
+import { DEFS, LIENZO, ORDEN } from './huaso.mjs';
 import { capasCabeza } from './cabeza.mjs';
 import { capasCuerpo } from './cuerpo.mjs';
-
-// Orden de atras hacia delante. Es el mismo que tendra el PSD y el que
-// Cubism respeta al importar, asi que aqui se decide que tapa a que.
-const ORDEN = [
-  'chamanto_atras',
-  'brazo_der_sup', 'brazo_izq_sup', 'brazo_der_ante', 'brazo_izq_ante',
-  'cuello', 'camisa', 'chaqueta', 'pantalon', 'faja', 'panuelo',
-  'chamanto_der', 'chamanto_izq', 'mano_der', 'mano_izq',
-  'pelo_atras', 'chupalla_ala_atras', 'oreja_der', 'oreja_izq',
-  'cara', 'sombra_chupalla',
-  'ojo_der_blanco', 'ojo_der_iris', 'ojo_der_brillo',
-  'ojo_der_linea_sup', 'ojo_der_linea_inf', 'ojo_der_parpado',
-  'ojo_izq_blanco', 'ojo_izq_iris', 'ojo_izq_brillo',
-  'ojo_izq_linea_sup', 'ojo_izq_linea_inf', 'ojo_izq_parpado',
-  'ceja_der', 'ceja_izq', 'nariz',
-  'boca_interior', 'boca_dientes', 'boca_labios', 'bigote',
-  'pelo_frente', 'chupalla_copa', 'chupalla_cinta', 'chupalla_ala',
-];
 
 const { ancho, alto } = LIENZO;
 

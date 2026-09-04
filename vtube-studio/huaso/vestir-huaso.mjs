@@ -18,12 +18,19 @@ const ACCESORIOS = join(DIR, 'salida', 'accesorios');
 // Posicion y tamano de salida de cada pieza. Son un punto de partida
 // razonable: dentro de VTube Studio se arrastran con el raton.
 export const PIEZAS = {
+  // La figura entera, para verla en escena sin pasar por Cubism. Va detras
+  // de todo y grande: no es algo que vestir, es el huaso puesto en pantalla.
+  huaso:    { x:  0.00, y: -0.05, tam: 0.92, orden: 19, giro:   0 },
   chupalla: { x:  0.00, y:  0.46, tam: 0.44, orden: 22, giro:   0 },
   chamanto: { x:  0.00, y: -0.12, tam: 0.58, orden: 20, giro:   0 },
   bigote:   { x:  0.00, y:  0.13, tam: 0.13, orden: 24, giro:   0 },
   panuelo:  { x:  0.00, y: -0.01, tam: 0.17, orden: 23, giro:   0 },
   espuela:  { x: -0.33, y: -0.74, tam: 0.15, orden: 21, giro: -12 },
 };
+
+// Sin decir piezas se ponen los accesorios; el huaso entero se pide aparte,
+// porque encima de un modelo vestido solo estorbaria.
+const ACCESORIOS_SUELTOS = ['chupalla', 'chamanto', 'bigote', 'panuelo', 'espuela'];
 
 const salida = (texto) => console.log(texto);
 const nombreArchivo = (pieza) => `huaso_${pieza}.png`;
@@ -76,7 +83,7 @@ async function instanciaDe(s, pieza) {
 // ------------------------------------------------------------------ ordenes
 
 async function poner(s, piezas) {
-  const lista = piezas.length ? piezas : Object.keys(PIEZAS);
+  const lista = piezas.length ? piezas : ACCESORIOS_SUELTOS;
   salida('');
   for (const pieza of lista) {
     try {
@@ -91,9 +98,14 @@ async function poner(s, piezas) {
     }
   }
   salida('\n  Arrastralas en VTube Studio para colocarlas a gusto.');
-  salida('  Para que sigan al modelo cuando gire la cabeza, clavalas:');
-  salida('    node vestir-huaso.mjs mallas            # ve que mallas tiene tu modelo');
-  salida('    node vestir-huaso.mjs clavar chupalla <malla>\n');
+  if (lista.length === 1 && lista[0] === 'huaso') {
+    salida('  Es la figura entera como item: se ve, pero no sigue a tu cara.');
+    salida('  Para que se mueva hace falta el avatar Live2D (ver GUIA-RIGGING.md).\n');
+  } else {
+    salida('  Para que sigan al modelo cuando gire la cabeza, clavalas:');
+    salida('    node vestir-huaso.mjs mallas            # ve que mallas tiene tu modelo');
+    salida('    node vestir-huaso.mjs clavar chupalla <malla>\n');
+  }
 }
 
 async function quitar(s, piezas) {
@@ -155,8 +167,9 @@ async function clavar(s, pieza, malla, soltar = false) {
 const AYUDA = `
   Vestir de huaso al modelo cargado
 
-    node vestir-huaso.mjs poner                  todas las piezas
-    node vestir-huaso.mjs poner chupalla bigote  solo esas
+    node vestir-huaso.mjs poner huaso            el huaso entero en escena
+    node vestir-huaso.mjs poner                  los cinco accesorios
+    node vestir-huaso.mjs poner chupalla bigote  solo esos
     node vestir-huaso.mjs quitar                 quita lo que pusimos
     node vestir-huaso.mjs mallas                 las mallas del modelo
     node vestir-huaso.mjs clavar <pieza> <malla> que la pieza siga al modelo

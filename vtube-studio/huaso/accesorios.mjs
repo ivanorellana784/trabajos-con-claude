@@ -4,7 +4,7 @@
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Resvg } from '@resvg/resvg-js';
-import { DEFS, LIENZO, C, forma, elipse } from './huaso.mjs';
+import { DEFS, LIENZO, ORDEN, C, forma, elipse } from './huaso.mjs';
 import { capasCabeza } from './cabeza.mjs';
 import { capasCuerpo } from './cuerpo.mjs';
 
@@ -37,6 +37,9 @@ const ESPUELA = `
   ${elipse(392, 232, 9, 6, '#ffffff', 'opacity="0.55"')}`;
 
 const PIEZAS = {
+  // La figura entera. VTube Studio no la puede usar de avatar sin el .moc3,
+  // pero como item se ve en escena hoy mismo.
+  huaso:    juntar(...ORDEN),
   chupalla: juntar('chupalla_ala_atras', 'chupalla_copa', 'chupalla_cinta', 'chupalla_ala'),
   chamanto: juntar('chamanto_atras', 'chamanto_der', 'chamanto_izq'),
   bigote:   juntar('bigote'),

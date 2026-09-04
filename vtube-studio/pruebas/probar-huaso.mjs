@@ -58,6 +58,19 @@ console.log('\nVestir de huaso - pruebas\n');
     new Set(ITEMS.map((i) => i.order)).size === 5);
 }
 
+// 1b. el huaso entero es una pieza aparte, no entra con los accesorios
+{
+  comprobar('poner sin argumentos NO mete la figura entera',
+    !ITEMS.some((i) => i.fileName === 'huaso_huaso.png'));
+  await correr('quitar');
+  const { texto } = await correr('poner', 'huaso');
+  comprobar('poner huaso mete la figura entera', ITEMS.length === 1
+    && ITEMS[0].fileName === 'huaso_huaso.png');
+  comprobar('avisa de que no seguira a tu cara', texto.includes('no sigue a tu cara'));
+  comprobar('va detras de los accesorios',
+    ITEMS[0].order < Math.min(20, 21, 22, 23, 24), `capa ${ITEMS[0].order}`);
+}
+
 // 2. quitar
 {
   await correr('quitar');

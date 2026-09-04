@@ -13,6 +13,21 @@ Hay dos formas de usarlo, y salen del mismo dibujo:
       Cubism, por el puente)    Live2D de verdad)
 ```
 
+## Verlo ya mismo
+
+El dibujo montado está en `salida/huaso.png`: se abre con cualquier visor, sin
+VTube Studio de por medio.
+
+Y para verlo **dentro de VTube Studio**, aunque todavía no sea un avatar:
+
+```bash
+node vestir-huaso.mjs poner huaso
+```
+
+Entra como item: se ve en escena y sale en pantalla, pero no sigue a tu cara —
+para eso hace falta el avatar Live2D del camino largo. Se quita con
+`node vestir-huaso.mjs quitar`.
+
 ## Camino corto: vestir de huaso al modelo que ya tienes
 
 No necesita Cubism ni saber nada de rigging. Mete las piezas en escena como
@@ -23,7 +38,7 @@ Ajustes → API → plugin **"Claude"** → Config/Permissions → **Load custom
 Es el permiso que deja meter imágenes en escena; sin él, esto no puede funcionar.
 
 ```bash
-node vestir-huaso.mjs poner                  # las cinco piezas
+node vestir-huaso.mjs poner                  # los cinco accesorios
 node vestir-huaso.mjs poner chupalla bigote  # solo esas
 node vestir-huaso.mjs quitar                 # devolverlo a como estaba
 ```
@@ -61,7 +76,7 @@ Ver **[`GUIA-RIGGING.md`](GUIA-RIGGING.md)**.
 | `salida/huaso.svg` | el mismo dibujo en vectorial, editable |
 | `salida/huaso.png` | cómo queda montado |
 | `salida/capas/` | cada capa suelta en PNG, numerada por orden |
-| `salida/accesorios/` | las cinco piezas recortadas, para usar como items |
+| `salida/accesorios/` | las piezas recortadas y la figura entera, para usar como items |
 | `expresiones/` | cuatro `.exp3.json` listos |
 | `vestir-huaso.mjs` | el camino corto. Sin dependencias |
 | `GUIA-RIGGING.md` | el camino largo, paso a paso |

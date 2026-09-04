@@ -28,6 +28,24 @@ export const A = {
   fajaY: 1520, fajaAlto: 120, chamantoFin: 1780, munecaY: 1820, caderaY: 1640,
 };
 
+// Orden de atras hacia delante. Es el mismo que tendra el PSD y el que
+// Cubism respeta al importar, asi que aqui se decide que tapa a que.
+export const ORDEN = [
+  'chamanto_atras',
+  'brazo_der_sup', 'brazo_izq_sup', 'brazo_der_ante', 'brazo_izq_ante',
+  'cuello', 'camisa', 'chaqueta', 'pantalon', 'faja', 'panuelo',
+  'chamanto_der', 'chamanto_izq', 'mano_der', 'mano_izq',
+  'pelo_atras', 'chupalla_ala_atras', 'oreja_der', 'oreja_izq',
+  'cara', 'sombra_chupalla',
+  'ojo_der_blanco', 'ojo_der_iris', 'ojo_der_brillo',
+  'ojo_der_linea_sup', 'ojo_der_linea_inf', 'ojo_der_parpado',
+  'ojo_izq_blanco', 'ojo_izq_iris', 'ojo_izq_brillo',
+  'ojo_izq_linea_sup', 'ojo_izq_linea_inf', 'ojo_izq_parpado',
+  'ceja_der', 'ceja_izq', 'nariz',
+  'boca_interior', 'boca_dientes', 'boca_labios', 'bigote',
+  'pelo_frente', 'chupalla_copa', 'chupalla_cinta', 'chupalla_ala',
+];
+
 // ------------------------------------------------------------------ utiles
 
 const p = (n) => Math.round(n * 10) / 10;
