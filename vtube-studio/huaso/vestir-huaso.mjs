@@ -43,6 +43,15 @@ function pista(mensaje = '') {
            '(el boton Done del panel de permisos, y el buscador de items de\n' +
            'abajo a la derecha). Con uno abierto, se niega a cargar nada.';
   }
+  // La negativa que sale cuando el permiso de imagenes no se ha concedido:
+  // VTube Studio la cuenta como rechazo del usuario, no como falta de permiso.
+  if (m.includes('rejected loading this item') || m.includes('user has rejected')) {
+    return 'Falta el permiso de imagenes -o se rechazo la ventana que lo pedia-.\n' +
+           'Ajustes -> API -> "Plugin config/permissions" -> el plugin "Claude"\n' +
+           '-> enciende "Load custom images" -> Done.\n' +
+           'Tambien se puede pedir por la API, que abre la ventana al momento:\n' +
+           '  node vts.mjs crudo PermissionRequest \'{"requestedPermission":"LoadCustomImagesFromBase64"}\'';
+  }
   if (m.includes('permission')) {
     return 'Enciende "Load custom images": Ajustes -> API -> plugin "Claude"\n' +
            '-> su boton de config/permissions -> Done.';
