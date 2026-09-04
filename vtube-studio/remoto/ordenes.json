@@ -2,5 +2,8 @@
   "version": 1,
   "encendido": true,
   "nota": "Lo que Claude escriba aqui, el vigia lo hace en tu VTube Studio. Cada orden necesita un id distinto: las ya hechas no se repiten.",
-  "ordenes": []
+  "ordenes": [
+    { "id": "demo-1", "hacer": "crudo", "tipo": "StatisticsRequest" },
+    { "id": "demo-2", "hacer": "mover", "x": 0.25, "seg": 0.8 }
+  ]
 }
