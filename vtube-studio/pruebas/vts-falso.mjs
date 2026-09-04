@@ -14,23 +14,40 @@ const PUERTO = Number(process.argv[2] || 8901);
 
 // --- marcos websocket ---------------------------------------------------
 
-function envolver(texto) {
-  const datos = Buffer.from(texto, 'utf8');
+function marcoServidor(byte0, datos) {
   let cabecera;
   if (datos.length < 126) {
-    cabecera = Buffer.from([0x81, datos.length]);
+    cabecera = Buffer.from([byte0, datos.length]);
   } else if (datos.length < 65536) {
     cabecera = Buffer.alloc(4);
-    cabecera[0] = 0x81;
+    cabecera[0] = byte0;
     cabecera[1] = 126;
     cabecera.writeUInt16BE(datos.length, 2);
   } else {
     cabecera = Buffer.alloc(10);
-    cabecera[0] = 0x81;
+    cabecera[0] = byte0;
     cabecera[1] = 127;
     cabecera.writeBigUInt64BE(BigInt(datos.length), 2);
   }
   return Buffer.concat([cabecera, datos]);
+}
+
+const envolver = (texto) => marcoServidor(0x81, Buffer.from(texto, 'utf8'));
+const ping = (texto) => marcoServidor(0x89, Buffer.from(texto, 'utf8'));
+
+// Parte un mensaje en varios marcos: el primero de texto sin FIN, los de en
+// medio continuaciones, el ultimo con FIN. Solo para apretarle las tuercas al
+// cliente, que tiene que volver a juntarlos.
+function envolverEnTrozos(texto, cuantos = 3) {
+  const datos = Buffer.from(texto, 'utf8');
+  const paso = Math.ceil(datos.length / cuantos);
+  const marcos = [];
+  for (let i = 0; i < cuantos; i++) {
+    const trozo = datos.subarray(i * paso, Math.min((i + 1) * paso, datos.length));
+    const byte0 = (i === cuantos - 1 ? 0x80 : 0x00) | (i === 0 ? 0x1 : 0x0);
+    marcos.push(marcoServidor(byte0, trozo));
+  }
+  return Buffer.concat(marcos);
 }
 
 // Saca los mensajes completos que haya en el buffer y devuelve lo que sobra.
@@ -107,7 +124,7 @@ function atender(mensaje, sesion) {
   const { messageType: tipo, requestID, data = {} } = mensaje;
   registro.push(tipo);
 
-  const necesitaPermiso = !['APIStateRequest', 'AuthenticationTokenRequest', 'AuthenticationRequest'].includes(tipo);
+  const necesitaPermiso = !['APIStateRequest', 'AuthenticationTokenRequest', 'AuthenticationRequest'].includes(tipo) && !tipo.startsWith('Prueba');
   if (necesitaPermiso && !sesion.autenticada) {
     return error(requestID, 8, 'No hay sesion autenticada para este plugin.');
   }
@@ -201,6 +218,17 @@ function atender(mensaje, sesion) {
       if (data.timeInSeconds === undefined) return error(requestID, 152, 'Falta timeInSeconds.');
       return responder('MoveModelResponse', requestID, {});
 
+    // --- solo para las pruebas del cliente websocket ---
+
+    case 'PruebaGrandeRequest':
+      return responder('PruebaGrandeResponse', requestID, { relleno: 'x'.repeat(Number(data.tamano) || 10) });
+
+    case 'PruebaFragmentadaRequest':
+      return responder('PruebaFragmentadaResponse', requestID, { texto: 'vino partido en varios marcos' });
+
+    case 'PruebaPingRequest':
+      return responder('PruebaPingResponse', requestID, { texto: 'vino despues de un ping' });
+
     default:
       return error(requestID, 100, `Peticion desconocida: ${tipo}`);
   }
@@ -237,7 +265,15 @@ export function arrancar(puerto = PUERTO) {
           } catch {
             return;
           }
-          socket.write(envolver(atender(mensaje, sesion)));
+          const respuesta = atender(mensaje, sesion);
+          if (mensaje.messageType === 'PruebaFragmentadaRequest') {
+            socket.write(envolverEnTrozos(respuesta, 3));
+          } else if (mensaje.messageType === 'PruebaPingRequest') {
+            socket.write(ping('estas ahi'));
+            socket.write(envolver(respuesta));
+          } else {
+            socket.write(envolver(respuesta));
+          }
         },
         () => socket.end()
       );

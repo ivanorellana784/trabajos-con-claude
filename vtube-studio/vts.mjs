@@ -10,6 +10,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import { abrir } from './websocket.mjs';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -44,24 +45,64 @@ async function guardarToken(token) {
 
 // ---------------------------------------------------------------- conexion
 
-export async function conectar({ url = CONFIG.url, aviso = () => {} } = {}) {
+// El transporte que trae Node, con la misma forma que el nuestro. Solo lo usa
+// el diagnostico, para poder comparar uno contra otro en el mismo sitio.
+async function transporteDeNode(url) {
   if (typeof WebSocket !== 'function') {
+    throw new Error(`Node ${process.version} no trae WebSocket propio.`);
+  }
+  const ws = new WebSocket(url);
+  const oyentesMensaje = new Set();
+  const oyentesCierre = new Set();
+  ws.addEventListener('error', () => {});
+  ws.addEventListener('message', (ev) => {
+    for (const cb of oyentesMensaje) cb(String(ev.data));
+  });
+  ws.addEventListener('close', () => {
+    for (const cb of oyentesCierre) cb('el servidor cerro la conexion');
+  });
+  await new Promise((listo, falla) => {
+    ws.addEventListener('open', () => listo(), { once: true });
+    ws.addEventListener('error', () => falla(new Error('no se pudo abrir')), { once: true });
+  });
+  return {
+    enviar: (texto) => ws.send(texto),
+    alMensaje: (cb) => (oyentesMensaje.add(cb), () => oyentesMensaje.delete(cb)),
+    alCierre: (cb) => (oyentesCierre.add(cb), () => oyentesCierre.delete(cb)),
+    cerrar: () => {
+      try {
+        ws.close();
+      } catch {}
+    },
+    get abierta() {
+      return ws.readyState === 1;
+    },
+    handshake: null,
+  };
+}
+
+export async function conectar({ url = CONFIG.url, aviso = () => {}, con = 'propio' } = {}) {
+  let ws;
+  try {
+    ws = con === 'node' ? await transporteDeNode(url) : await abrir(url);
+  } catch (err) {
     throw new Error(
-      `Este puente necesita Node 22 o superior (usa el WebSocket que ya trae Node). Tienes ${process.version}.`
+      `No pude conectar con VTube Studio en ${url}.\n` +
+        `  1. Abre VTube Studio.\n` +
+        `  2. Engranaje (Ajustes) -> pestana API -> enciende "Start API (allow plugins)".\n` +
+        `  3. Si le cambiaste el puerto, dimelo con  VTS_URL=ws://127.0.0.1:PUERTO\n` +
+        `  (lo que fallo: ${err && err.message ? err.message : err})`
     );
   }
 
-  const ws = new WebSocket(url);
   const pendientes = new Map();
   const oyentes = new Set();
   let caida = null;
 
-  ws.addEventListener('error', () => {}); // sin esto Node se queja del evento suelto
-
-  ws.addEventListener('message', (ev) => {
+  ws.alMensaje((texto) => {
     let mensaje;
     try {
-      mensaje = JSON.parse(String(ev.data));
+      mensaje = JSON.parse(texto);
     } catch {
       return;
     }
@@ -81,37 +122,13 @@ export async function conectar({ url = CONFIG.url, aviso = () => {} } = {}) {
     }
   });
 
-  ws.addEventListener('close', () => {
-    caida = caida || new Error('VTube Studio cerro la conexion');
+  ws.alCierre((motivo) => {
+    caida = caida || new Error(`VTube Studio corto la conexion (${motivo})`);
     for (const [, espera] of pendientes) {
       clearTimeout(espera.reloj);
       espera.rechazar(caida);
     }
     pendientes.clear();
-  });
-
-  await new Promise((resolver, rechazar) => {
-    const alAbrir = () => {
-      quitar();
-      resolver();
-    };
-    const alFallar = () => {
-      quitar();
-      rechazar(
-        new Error(
-          `No pude conectar con VTube Studio en ${url}.\n` +
-            `  1. Abre VTube Studio.\n` +
-            `  2. Engranaje (Ajustes) -> pestana API -> enciende "Start API (allow plugins)".\n` +
-            `  3. Si le cambiaste el puerto, dimelo con  VTS_URL=ws://127.0.0.1:PUERTO`
-        )
-      );
-    };
-    function quitar() {
-      ws.removeEventListener('open', alAbrir);
-      ws.removeEventListener('error', alFallar);
-    }
-    ws.addEventListener('open', alAbrir);
-    ws.addEventListener('error', alFallar);
   });
 
   let contador = 0;
@@ -132,7 +149,7 @@ export async function conectar({ url = CONFIG.url, aviso = () => {} } = {}) {
       }, espera);
       pendientes.set(requestID, { resolver, rechazar, reloj });
       try {
-        ws.send(JSON.stringify(sobre));
+        ws.enviar(JSON.stringify(sobre));
       } catch (err) {
         pendientes.delete(requestID);
         clearTimeout(reloj);
@@ -177,14 +194,11 @@ export async function conectar({ url = CONFIG.url, aviso = () => {} } = {}) {
       oyentes.add(oyente);
       return () => oyentes.delete(oyente);
     },
-    cerrar: () => {
-      try {
-        ws.close();
-      } catch {}
-    },
+    cerrar: () => ws.cerrar(),
     get abierta() {
-      return ws.readyState === 1;
+      return ws.abierta;
     },
+    handshake: ws.handshake,
   };
 }
 
@@ -278,6 +292,7 @@ Puente con VTube Studio
   node vts.mjs mover x=0 y=-0.4 tam=10    mueve, gira o escala el modelo
   node vts.mjs estadisticas               version, tiempo encendido, fps
   node vts.mjs crudo <Tipo> [json]        cualquier peticion de la API, tal cual
+  node vts.mjs diagnostico                prueba la conexion a fondo y compara
 
   Anade  --json  para la respuesta cruda en vez del resumen.
 `;
@@ -288,6 +303,47 @@ function imprimir(titulo, filas) {
   for (const fila of filas) console.log(`  ${fila}`);
 }
 
+
+// Tres peticiones seguidas por conexion, con los dos transportes. Sirve para
+// ver de un vistazo si el servidor deja de contestar a partir de la segunda,
+// que es como se manifiesta la compresion mal negociada.
+async function diagnostico(url) {
+  console.log(`\n  Diagnostico contra ${url}`);
+  console.log('  Tres peticiones seguidas en cada conexion. La segunda es la delatora.\n');
+
+  const probar = async (nombre, con) => {
+    console.log(`  --- ${nombre} ---`);
+    let s;
+    try {
+      s = await conectar({ url, con });
+    } catch (err) {
+      console.log(`  no conecto: ${String(err.message).split('\n')[0]}\n`);
+      return;
+    }
+    if (s.handshake) {
+      console.log(`  respuesta al apreton de manos: ${s.handshake.estado}`);
+      console.log(`  extensiones negociadas: ${s.handshake.cabeceras['sec-websocket-extensions'] || '(ninguna)'}`);
+    } else {
+      console.log('  (el WebSocket de Node no deja ver el apreton de manos)');
+    }
+    for (let i = 1; i <= 3; i++) {
+      const arranque = Date.now();
+      try {
+        const r = await s.pedir('APIStateRequest', {}, 8000);
+        console.log(`  peticion ${i}: responde en ${Date.now() - arranque} ms (VTube Studio ${r.vTubeStudioVersion || '?'})`);
+      } catch (err) {
+        console.log(`  peticion ${i}: FALLA -> ${err.message}`);
+      }
+    }
+    s.cerrar();
+    console.log('');
+  };
+
+  await probar('cliente propio, sin compresion', 'propio');
+  await probar('WebSocket de Node, el que fallaba', 'node');
+  console.log('  Copia esta salida entera y pegasela a Claude.\n');
+}
+
 async function principal(args) {
   const json = args.includes('--json');
   const limpios = args.filter((a) => a !== '--json');
@@ -296,6 +352,11 @@ async function principal(args) {
 
   if (orden === 'ayuda' || orden === '--help' || orden === '-h') {
     console.log(ORDENES);
+    return;
+  }
+
+  if (orden === 'diagnostico') {
+    await diagnostico(CONFIG.url);
     return;
   }
 

@@ -42,14 +42,17 @@ retirarle el permiso a Claude, bórralo y quita el plugin en Ajustes → API.
 
 ## 3. Vincularlo con Claude
 
-Una sola vez, en el PC donde está VTube Studio:
+Ya viene hecho: en la raíz del repo hay un `.mcp.json` que declara este puente,
+así que **cualquier sesión de Claude Code abierta en esa carpeta lo ofrece sola**.
+La primera vez te pedirá aprobarlo; acepta. Comprueba con `/mcp`: debe aparecer
+**vtube** conectado.
+
+Si prefieres registrarlo a mano —o usarlo desde otra carpeta— y tienes el comando
+`claude` en el PATH:
 
 ```bash
 claude mcp add vtube -- node "C:\Users\iorel\Downloads\clau lunes\vtube-studio\mcp.mjs"
 ```
-
-(ajusta la ruta si el repo vive en otra carpeta). Comprueba con `/mcp` dentro de
-Claude Code: debe aparecer **vtube** conectado.
 
 A partir de ahí basta con pedirlo en palabras: *"mira qué hotkeys tiene el modelo
 y dispara la del saludo"*, *"ponle la expresión de sonrojo"*, *"mueve el avatar a
@@ -90,6 +93,7 @@ node vts.mjs expresion Sonrojo on       # ponla (o "off" para quitarla)
 node vts.mjs mover x=0.2 y=-0.4 tam=15  # coloca el modelo
 node vts.mjs estadisticas               # versión, uptime, fps
 node vts.mjs crudo ItemListRequest      # cualquier petición cruda
+node vts.mjs diagnostico                # prueba la conexión a fondo si algo falla
 ```
 
 Los nombres no hace falta escribirlos enteros: `disparar salu` encuentra `Saludo`.
@@ -113,16 +117,31 @@ Hay un VTube Studio de mentira que habla el mismo protocolo, así que el puente 
 puede probar entero sin abrir el programa:
 
 ```bash
-node pruebas/probar.mjs      # el cliente: permiso, hotkeys, expresiones, modelos, errores
-node pruebas/probar-mcp.mjs  # el servidor MCP: saludo, catálogo y llamadas reales
+node pruebas/probar.mjs        # el cliente: permiso, hotkeys, expresiones, modelos, errores
+node pruebas/probar-mcp.mjs    # el servidor MCP: saludo, catálogo y llamadas reales
+node pruebas/probar-websocket.mjs  # el websocket propio: marcos, fragmentos, pings, cierres
 ```
 
 ## Cuando algo no va
+
+Lo primero, el diagnóstico:
+
+```bash
+node vts.mjs diagnostico
+```
+
+Hace tres peticiones seguidas en cada conexión, con dos clientes distintos, y
+dice exactamente dónde se rompe. Pegar su salida entera suele bastar.
+
 
 - **"No pude conectar"** → VTube Studio cerrado, o la API sin encender en Ajustes → API.
 - **La ventana de permiso no aparece** → suele quedar detrás de la ventana de VTube Studio.
 - **"No hay sesión autenticada"** → borra `token.json` y vuelve a `node vts.mjs conectar`.
 - **`vts_hotkeys` devuelve la lista vacía** → el modelo no tiene hotkeys configuradas;
   eso se arregla dentro de VTube Studio, no aquí.
+- **Contesta la primera petición y luego se calla** → eso era el WebSocket que
+  trae Node: ofrece compresión (`permessage-deflate`) y VTube Studio la acepta sin
+  manejarla bien. Por eso el puente lleva su propio cliente en `websocket.mjs`, que
+  no la ofrece. El diagnóstico lo confirma comparando los dos.
 - **Claude no ve las herramientas** → `/mcp` en Claude Code para ver el estado, y
   recuerda que una sesión en la nube no puede alcanzar tu PC.
