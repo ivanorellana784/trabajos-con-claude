@@ -97,6 +97,8 @@ const HOTKEYS = [
   { name: 'Sonrojo', type: 'ToggleExpression', file: 'sonrojo.exp3.json', hotkeyID: 'hk-sonrojo', keyCombination: [], description: '' },
 ];
 
+const PERMISOS = [{ name: 'LoadCustomImagesFromBase64', granted: false }];
+
 const EXPRESIONES = [
   { name: 'Sonrojo', file: 'sonrojo.exp3.json', active: false, usedInHotkeys: [], parameters: [] },
   { name: 'Enfado', file: 'enfado.exp3.json', active: false, usedInHotkeys: [], parameters: [] },
@@ -340,6 +342,20 @@ function atender(mensaje, sesion) {
         isPinned: item.pinnedToModel,
         itemInstanceID: item.instanceID,
         itemFileName: item.fileName,
+      });
+    }
+
+    case 'PermissionRequest': {
+      if (!data.requestedPermission) {
+        return responder('PermissionResponse', requestID, { permissions: PERMISOS });
+      }
+      const permiso = PERMISOS.find((p) => p.name === data.requestedPermission);
+      if (!permiso) return error(requestID, 152, 'Esa permission no existe.');
+      permiso.granted = true;
+      return responder('PermissionResponse', requestID, {
+        grantSuccess: true,
+        requestedPermission: data.requestedPermission,
+        permissions: PERMISOS,
       });
     }
 

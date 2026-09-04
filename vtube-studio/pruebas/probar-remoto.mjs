@@ -14,6 +14,8 @@ process.env.VTS_URL = `ws://127.0.0.1:${PUERTO}`;
 process.env.VTS_TOKEN = join(tmpdir(), `vts-token-remoto-${process.pid}.json`);
 process.env.VTS_ORDENES_ARCHIVO = ORDENES;
 process.env.VTS_HECHAS = HECHAS;
+// Sin esto la prueba empuja su bitacora de mentira al repo de verdad.
+process.env.VTS_BITACORA = 'no';
 
 const servidor = await arrancar(PUERTO);
 const vigia = await import('../remoto/escucha.mjs');

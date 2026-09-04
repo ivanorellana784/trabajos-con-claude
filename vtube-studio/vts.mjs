@@ -221,6 +221,18 @@ export const estadisticas = (s) => s.pedir('StatisticsRequest');
 export const modeloActual = (s) => s.pedir('CurrentModelRequest');
 export const modelos = (s) => s.pedir('AvailableModelsRequest');
 export const hotkeys = (s) => s.pedir('HotkeysInCurrentModelRequest');
+// VTube Studio separa la conexion de los permisos: estar autenticado no da
+// derecho a cargar imagenes. Esto pide uno concreto y abre su ventana dentro
+// del programa, que es mas comodo que buscarla por los menus.
+export const PERMISOS = { imagenes: 'LoadCustomImagesFromBase64' };
+
+export const permisos = (s) => s.pedir('PermissionRequest', {});
+
+export function pedirPermiso(s, cual) {
+  const nombre = PERMISOS[String(cual).toLowerCase()] || cual;
+  return s.pedir('PermissionRequest', { requestedPermission: nombre }, ESPERA_PERMISO);
+}
+
 export const expresiones = (s) => s.pedir('ExpressionStateRequest', { details: true });
 
 // Busca por id exacto, luego por nombre exacto, luego por parecido. Si no hay
@@ -291,6 +303,7 @@ Puente con VTube Studio
   node vts.mjs expresion <cual> [on|off]  pone o quita una expresion
   node vts.mjs mover x=0 y=-0.4 tam=10    mueve, gira o escala el modelo
   node vts.mjs estadisticas               version, tiempo encendido, fps
+  node vts.mjs permiso [imagenes]         mira los permisos, o pide uno
   node vts.mjs crudo <Tipo> [json]        cualquier peticion de la API, tal cual
   node vts.mjs diagnostico                prueba la conexion a fondo y compara
 
@@ -463,6 +476,25 @@ async function principal(args) {
           relativo: pares.relativo === 'si' || pares.relativo === 'true',
         });
         salida(r, () => console.log(`\n  Modelo movido: ${JSON.stringify(r)}`));
+        break;
+      }
+      case 'permiso': {
+        const cual = limpios[1];
+        if (!cual) {
+          const r = await permisos(s);
+          salida(r, () =>
+            imprimir(
+              'Permisos del plugin:',
+              (r.permissions || []).map((p) => `${p.granted ? 'si' : 'NO'}  ${p.name}`)
+            )
+          );
+          break;
+        }
+        aviso('Mira VTube Studio: va a preguntarte si concedes el permiso. Acepta.');
+        const r = await pedirPermiso(s, cual);
+        salida(r, () =>
+          console.log(`\n  ${r.grantSuccess ? 'Concedido' : 'NO concedido'}: ${r.requestedPermission || cual}`)
+        );
         break;
       }
       case 'crudo': {

@@ -83,7 +83,23 @@ console.log('\nPuente con VTube Studio - pruebas\n');
   s.cerrar();
 }
 
-// 5. errores legibles
+// 5. permisos, que van aparte de la autenticacion
+{
+  const s = await vts.sesion({ aviso: () => {} });
+  const antes = await vts.permisos(s);
+  comprobar('lista los permisos del plugin', Array.isArray(antes.permissions) && antes.permissions.length > 0);
+  comprobar('el de imagenes empieza sin conceder', antes.permissions.every((p) => !p.granted));
+
+  const r = await vts.pedirPermiso(s, 'imagenes');
+  comprobar('traduce el apodo al nombre real', r.requestedPermission === 'LoadCustomImagesFromBase64');
+  comprobar('y queda concedido', r.grantSuccess === true);
+
+  const despues = await vts.permisos(s);
+  comprobar('el permiso persiste en la sesion', despues.permissions.some((p) => p.granted));
+  s.cerrar();
+}
+
+// 6. errores legibles
 {
   const s = await vts.sesion({ aviso: () => {} });
   let mensaje = '';
@@ -104,7 +120,7 @@ console.log('\nPuente con VTube Studio - pruebas\n');
   s.cerrar();
 }
 
-// 6. VTube Studio cerrado
+// 7. VTube Studio cerrado
 {
   let mensaje = '';
   try {
