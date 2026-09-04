@@ -1,6 +1,6 @@
 {
-  "cuando": "2026-09-04T20:58:00.240Z",
-  "vueltas": 367,
+  "cuando": "2026-09-04T21:01:12.764Z",
+  "vueltas": 378,
   "ultimas": [
     {
       "id": "arreglo-1",
@@ -24,6 +24,11 @@
     },
     {
       "id": "clavar-cara-1",
+      "ok": false,
+      "por": "no se que es \"titere\""
+    },
+    {
+      "id": "clavar-cara-2",
       "ok": false,
       "por": "no se que es \"titere\""
     }
