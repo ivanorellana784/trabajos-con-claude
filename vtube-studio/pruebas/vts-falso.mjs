@@ -108,6 +108,13 @@ export const registro = [];
 
 // Items en escena y mallas del modelo: lo que necesita vestir-huaso.mjs.
 export const ITEMS = [];
+
+// Donde esta el modelo en pantalla, y el registro de lo que se le ha pedido.
+// El baile necesita las dos cosas: la posicion para saber de donde parte, y
+// el registro para poder comprobar que volvio a su sitio.
+export const POSICION = { x: 0, y: 0, giro: 0, tam: 0 };
+export const MOVIMIENTOS = [];
+export const INYECCIONES = [];
 // Se puede apagar desde la prueba para representar el permiso "Load custom
 // images" sin conceder, que es el fallo mas probable al otro lado.
 export const config = { permisoImagenes: true, ventanasAbiertas: false };
@@ -187,6 +194,12 @@ function atender(mensaje, sesion) {
         modelLoaded: !!cargado,
         modelName: cargado ? cargado.modelName : '',
         modelID: cargado ? cargado.modelID : '',
+        modelPosition: {
+          positionX: POSICION.x,
+          positionY: POSICION.y,
+          rotation: POSICION.giro,
+          size: POSICION.tam,
+        },
       });
     }
 
@@ -236,9 +249,41 @@ function atender(mensaje, sesion) {
       return responder('ExpressionActivationResponse', requestID, {});
     }
 
-    case 'MoveModelRequest':
+    case 'MoveModelRequest': {
       if (data.timeInSeconds === undefined) return error(requestID, 152, 'Falta timeInSeconds.');
+      const campos = [['positionX', 'x'], ['positionY', 'y'], ['rotation', 'giro'], ['size', 'tam']];
+      for (const [campo, clave] of campos) {
+        if (data[campo] !== undefined) POSICION[clave] = Number(data[campo]);
+      }
+      MOVIMIENTOS.push({ ...POSICION, segundos: data.timeInSeconds });
       return responder('MoveModelResponse', requestID, {});
+    }
+
+    case 'ItemMoveRequest': {
+      const movidos = [];
+      for (const orden of data.itemsToMove || []) {
+        const item = ITEMS.find((i) => i.instanceID === orden.itemInstanceID);
+        if (!item) {
+          movidos.push({ itemInstanceID: orden.itemInstanceID, success: false, errorID: 152 });
+          continue;
+        }
+        for (const campo of ['positionX', 'positionY', 'rotation', 'size']) {
+          if (orden[campo] !== undefined) item[campo] = Number(orden[campo]);
+        }
+        movidos.push({ itemInstanceID: orden.itemInstanceID, success: true, errorID: 0 });
+      }
+      return responder('ItemMoveResponse', requestID, { movedItems: movidos });
+    }
+
+    // Asi se mueve una boca sin tener rigging: se le mete el valor al
+    // parametro por encima de lo que diga la camara.
+    case 'InjectParameterDataRequest': {
+      if (!Array.isArray(data.parameterValues) || !data.parameterValues.length) {
+        return error(requestID, 152, 'Falta parameterValues.');
+      }
+      for (const p of data.parameterValues) INYECCIONES.push({ id: p.id, value: p.value });
+      return responder('InjectParameterDataResponse', requestID, {});
+    }
 
     case 'ArtMeshListRequest': {
       const cargado = MODELOS.find((m) => m.modelLoaded);

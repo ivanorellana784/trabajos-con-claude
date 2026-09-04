@@ -92,6 +92,53 @@ async function vestir(orden) {
   return `vestir-huaso ${que} -> ${ultima.trim()}`;
 }
 
+// Los programas del huaso abren su propia sesion, asi que se lanzan aparte.
+// Nada pasa por un shell: execFile recibe los argumentos uno a uno, de modo
+// que el texto de una frase puede traer comillas, acentos y signos sin peligro.
+async function correrHuaso(guion, args, minutos = 5) {
+  const camino = join(CONFIG.repo, 'vtube-studio', 'huaso', guion);
+  const { stdout } = await ejecutar(process.execPath, [camino, ...args], {
+    maxBuffer: 8_000_000,
+    timeout: minutos * 60_000,
+  });
+  return stdout.trim().split('\n').filter(Boolean).pop() || 'hecho';
+}
+
+// Entre 1 y 8 vueltas, y a un compas de musica de verdad: fuera de ahi es una
+// orden mal escrita, y mas vale decirlo que dejar al modelo girando diez
+// minutos porque alguien tecleo un cero de mas.
+function bailarRemoto(orden) {
+  const veces = Math.round(Number(orden.veces || 1));
+  const bpm = Math.round(Number(orden.bpm || 126));
+  if (!(veces >= 1 && veces <= 8)) throw new Error(`"veces" va de 1 a 8, no ${orden.veces}`);
+  if (!(bpm >= 40 && bpm <= 300)) throw new Error(`"bpm" va de 40 a 300, no ${orden.bpm}`);
+  const args = [String(veces), '--bpm', String(bpm)];
+  if (orden.item) {
+    const item = String(orden.item);
+    if (!/^[\w .-]{1,40}$/.test(item)) throw new Error(`nombre de item no permitido: "${item}"`);
+    args.push('--item', item);
+  }
+  return correrHuaso('bailar.mjs', args);
+}
+
+// O una frase del catalogo, o el texto tal cual. El texto se limpia de
+// caracteres de control y se corta: lo que va a decir en voz alta no puede
+// ser un parrafo infinito.
+function hablarRemoto(orden) {
+  if (orden.frase) {
+    const frase = String(orden.frase);
+    if (!/^[\w .-]{1,40}$/.test(frase)) throw new Error(`nombre de frase no permitido: "${frase}"`);
+    return correrHuaso('hablar.mjs', ['--frase', frase]);
+  }
+  const texto = [...String(orden.texto || '')]
+    .map((c) => (c.codePointAt(0) < 32 || c.codePointAt(0) === 127 ? ' ' : c))
+    .join('')
+    .trim()
+    .slice(0, 300);
+  if (!texto) throw new Error('la orden de hablar no trae ni "texto" ni "frase"');
+  return correrHuaso('hablar.mjs', [texto]);
+}
+
 // Trae al disco lo que ya se descargo en el fetch de esta misma vuelta.
 async function actualizar() {
   const { stdout } = await ejecutar('git', ['merge', '--ff-only', `origin/${CONFIG.rama}`], {
@@ -151,6 +198,10 @@ export async function aplicar(s, orden) {
       return mirar(s, orden);
     case 'vestir':
       return vestir(orden);
+    case 'bailar':
+      return bailarRemoto(orden);
+    case 'hablar':
+      return hablarRemoto(orden);
     case 'actualizar':
       return actualizar();
     default:

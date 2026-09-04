@@ -4,7 +4,7 @@
 import { writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { arrancar, registro } from './vts-falso.mjs';
+import { arrancar, registro, MOVIMIENTOS, INYECCIONES, POSICION } from './vts-falso.mjs';
 
 const PUERTO = 8936;
 const ORDENES = join(tmpdir(), `vts-ordenes-${process.pid}.json`);
@@ -16,6 +16,9 @@ process.env.VTS_ORDENES_ARCHIVO = ORDENES;
 process.env.VTS_HECHAS = HECHAS;
 // Sin esto la prueba empuja su bitacora de mentira al repo de verdad.
 process.env.VTS_BITACORA = 'no';
+const FRASES = join(tmpdir(), `vts-frases-${process.pid}.json`);
+process.env.HUASO_FRASES = FRASES;
+await writeFile(FRASES, JSON.stringify({ frases: { hola: 'hola' } }), 'utf8');
 
 const servidor = await arrancar(PUERTO);
 const vigia = await import('../remoto/escucha.mjs');
@@ -95,14 +98,14 @@ console.log('\nVigia de ordenes - pruebas\n');
 {
   const estado = await vigia.arrancarEstado();
   await escribir([
-    { id: 'rota-1', hacer: 'bailar', que: 'cueca' },
+    { id: 'rota-1', hacer: 'volar', que: 'alto' },
     { id: 'rota-2', hacer: 'disparar', que: 'no existe esta hotkey' },
     { id: 'rota-3', hacer: 'vestir', que: 'rm -rf' },
     { id: 'buena-1', hacer: 'disparar', que: 'Saludo' },
   ]);
   const r = await vigia.unaVuelta(estado);
   comprobar('las tres rotas fallan por separado', r.fallidas.length === 3, r.fallidas.map((f) => f.id).join(', '));
-  comprobar('una orden desconocida se explica', (r.fallidas.find((f) => f.id === 'rota-1') || {}).por.includes('bailar'));
+  comprobar('una orden desconocida se explica', (r.fallidas.find((f) => f.id === 'rota-1') || {}).por.includes('volar'));
   comprobar('la hotkey inexistente dice cuales hay', (r.fallidas.find((f) => f.id === 'rota-2') || {}).por.includes('Saludo'));
   comprobar('vestir solo acepta su lista de ordenes', (r.fallidas.find((f) => f.id === 'rota-3') || {}).por.includes('no es una orden de vestir-huaso'));
   comprobar('una orden rota no impide las siguientes', r.hechas.length === 1 && r.hechas[0].id === 'buena-1');
@@ -111,7 +114,44 @@ console.log('\nVigia de ordenes - pruebas\n');
   comprobar('y las rotas no se reintentan cada vuelta', otra.hechas.length === 0 && otra.fallidas.length === 0);
 }
 
-// 7. ordenes sin id: se ignoran en vez de repetirse para siempre
+// 7. bailar y hablar, que salen a programas aparte
+{
+  const estado = await vigia.arrancarEstado();
+  const partida = { ...POSICION };
+  MOVIMIENTOS.length = 0;
+  INYECCIONES.length = 0;
+  await escribir([
+    { id: 'baile-1', hacer: 'bailar', veces: 1, bpm: 300 },
+    { id: 'habla-1', hacer: 'hablar', frase: 'hola' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+
+  comprobar('el baile llega hasta VTube Studio', MOVIMIENTOS.length > 5, `${MOVIMIENTOS.length} movimientos`);
+  const final = MOVIMIENTOS[MOVIMIENTOS.length - 1];
+  comprobar(
+    'y vuelve a dejar el modelo donde estaba',
+    final.x === partida.x && final.y === partida.y && final.giro === partida.giro && final.tam === partida.tam,
+    `partia de x=${partida.x}, quedo en x=${final.x}`
+  );
+  comprobar('la frase mueve la boca', INYECCIONES.some((i) => i.id === 'MouthOpen'), `${INYECCIONES.length} gestos`);
+  comprobar('las dos ordenes se dan por hechas', r.hechas.length === 2 && r.fallidas.length === 0, (r.fallidas[0] || {}).por);
+}
+
+// 8. y no aceptan cualquier cosa
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([
+    { id: 'baile-malo', hacer: 'bailar', veces: 99 },
+    { id: 'baile-lento', hacer: 'bailar', bpm: 5 },
+    { id: 'habla-vacia', hacer: 'hablar' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('las tres ordenes mal puestas fallan', r.fallidas.length === 3, r.fallidas.map((f) => f.id).join(', '));
+  comprobar('y cada una dice su motivo', r.fallidas.every((f) => f.por && f.por.length > 10));
+  comprobar('99 vueltas no se bailan', (r.fallidas.find((f) => f.id === 'baile-malo') || {}).por.includes('1 a 8'));
+}
+
+// 9. ordenes sin id: se ignoran en vez de repetirse para siempre
 {
   const estado = await vigia.arrancarEstado();
   await escribir([{ hacer: 'disparar', que: 'Saludo' }]);
@@ -120,6 +160,7 @@ console.log('\nVigia de ordenes - pruebas\n');
   comprobar('una orden sin id no se ejecuta', r.hechas.length === 0 && !registro.includes('HotkeyTriggerRequest'));
 }
 
+await rm(FRASES, { force: true });
 await rm(ORDENES, { force: true });
 await rm(HECHAS, { force: true });
 await rm(process.env.VTS_TOKEN, { force: true });

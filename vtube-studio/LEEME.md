@@ -159,6 +159,41 @@ saberlo antes de dejarlo encendido.
 La última es la salida de emergencia: la API tiene mucho más (ítems, tintes de
 color, NDI, eventos) y `vts_peticion_cruda` llega ahí sin tocar el código.
 
+## Que baile y que hable
+
+Dos cosas que no necesitan Cubism ni instalar nada.
+
+```bash
+node huaso/bailar.mjs              una cueca al modelo cargado
+node huaso/bailar.mjs 3 --bpm 140  tres vueltas, mas rapido
+node huaso/bailar.mjs 1 --item huaso   que baile el item, no el modelo
+
+node huaso/hablar.mjs "Buenas tardes tengan ustedes"
+node huaso/hablar.mjs --frase saludo
+```
+
+**El baile** es una coreografia de trece pasos —saludo, izquierda, derecha,
+zapateo, media luna y la vuelta entera— que VTube Studio interpola: se le pide
+"ve a este sitio en medio segundo" y el pone el camino. Todo va en diferencia
+sobre el sitio de partida, asi que se puede bailar desde donde tengas puesto el
+personaje, y al terminar vuelve exactamente ahi. Tambien si lo cortas con Ctrl+C.
+
+**El habla** son dos cosas a la vez: Windows dice el texto con el sintetizador
+que ya trae —elige voz en espanol si tienes una instalada— y, mientras dura, se
+le inyecta `MouthOpen` al modelo unas 25 veces por segundo para que la boca
+acompane. Fuera de Windows no hay voz, pero la boca se mueve igual.
+
+Las frases viven en `huaso/frases.json` y se piden por nombre. Anade las tuyas
+ahi: la clave es el nombre corto, el valor lo que dice.
+
+### Hasta donde llega
+
+Lo que se mueve en el baile es **la figura entera**: se desplaza, se inclina,
+crece y da la vuelta. Los brazos y las piernas por separado necesitan el rigging
+de Cubism. Y la boca que se mueve al hablar es la del **modelo Live2D cargado**;
+el huaso, mientras siga siendo un dibujo en capas puesto como item, no tiene
+boca que mover.
+
 ## Usarlo a mano, sin Claude
 
 El mismo puente funciona como programa de terminal:
@@ -176,6 +211,8 @@ node vts.mjs mover x=0.2 y=-0.4 tam=15  # coloca el modelo
 node vts.mjs estadisticas               # versión, uptime, fps
 node vts.mjs crudo ItemListRequest      # cualquier petición cruda
 node vts.mjs diagnostico                # prueba la conexión a fondo si algo falla
+node huaso/bailar.mjs                   # que baile una cueca
+node huaso/hablar.mjs "hola pues"       # que lo diga en voz alta
 ```
 
 Los nombres no hace falta escribirlos enteros: `disparar salu` encuentra `Saludo`.
