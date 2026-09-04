@@ -32,6 +32,13 @@
     {
       "id": "arreglo-2",
       "hacer": "actualizar"
+    },
+    {
+      "id": "clavar-cara-1",
+      "hacer": "titere",
+      "que": "clavar",
+      "tam": 0.9,
+      "y": -0.05
     }
   ]
 }

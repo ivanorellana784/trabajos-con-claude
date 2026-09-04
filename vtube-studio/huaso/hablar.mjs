@@ -78,13 +78,17 @@ async function arrancarVoz(texto, avisar) {
   const archivo = join(tmpdir(), `huaso-dice-${process.pid}.txt`);
   await writeFile(archivo, texto, 'utf8');
   const guion = GUION.replace('ARCHIVO', `'${archivo}'`);
-  return new Promise((listo) => {
+  // Envuelta en un objeto a proposito: si esta funcion async devolviera la
+  // promesa a pelo, el "await" de fuera la esperaria entera y la boca no
+  // empezaria a moverse hasta que Windows hubiera terminado de hablar.
+  const hasta = new Promise((listo) => {
     execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', guion], (err) => {
       if (err) avisar(`  (la voz de Windows fallo: ${String(err.message).split('\n')[0]})`);
       rm(archivo, { force: true }).catch(() => {});
       listo();
     });
   });
+  return { hasta };
 }
 
 // Una boca que se abre y se cierra a ritmo de silabas -unas tres por segundo-,
@@ -134,14 +138,17 @@ export const sinControles = (texto) =>
     .map((c) => (c.codePointAt(0) < 32 || c.codePointAt(0) === 127 ? ' ' : c))
     .join('');
 
-export async function hablar(s, texto, { avisar = salida, voz = true } = {}) {
+// "lanzarVoz" se puede sustituir en las pruebas por una voz de mentira que
+// tarda lo que se le diga: es la unica forma de comprobar, fuera de Windows,
+// que la boca se mueve MIENTRAS suena y no despues.
+export async function hablar(s, texto, { avisar = salida, voz = true, lanzarVoz = arrancarVoz } = {}) {
   const limpio = sinControles(texto).trim().slice(0, LARGO_MAXIMO);
   if (!limpio) throw new Error('No me diste nada que decir.');
 
   avisar(`\n  Dice: "${limpio}"\n`);
-  const promesaVoz = voz ? await arrancarVoz(limpio, avisar) : null;
-  const gestos = await moverLaBoca(s, promesaVoz || dormir(duracionEstimada(limpio)), { avisar });
-  return { texto: limpio, gestos, conVoz: !!promesaVoz };
+  const laVoz = voz ? await lanzarVoz(limpio, avisar) : null;
+  const gestos = await moverLaBoca(s, laVoz ? laVoz.hasta : dormir(duracionEstimada(limpio)), { avisar });
+  return { texto: limpio, gestos, conVoz: !!laVoz };
 }
 
 const soyElPrograma = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

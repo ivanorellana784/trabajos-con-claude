@@ -107,7 +107,33 @@ console.log('\nEl titiritero - pruebas\n');
   comprobar('el saludo levanta el brazo derecho', saluda['huaso-brazo-der'].giro > 90);
 }
 
-// 5. quitar
+// 5. clavar al modelo anfitrion: el huaso hereda su seguimiento
+{
+  const mallas = await titi.mallasDelModelo(s);
+  comprobar('lee las mallas del modelo', mallas.includes('Cabeza') && mallas.includes('Torso'), mallas.join(', '));
+  comprobar('adivina la cara por el nombre', titi.adivinarMalla(mallas, /face|head|cabeza/i) === 'Cabeza');
+  comprobar('y prefiere la primera por orden', titi.adivinarMalla(['D_FACE_01', 'D_FACE_00'], /face/i) === 'D_FACE_00');
+
+  const r = await titi.clavar(s, {});
+  comprobar('clava las seis piezas', r.clavadas === 6, `cabeza en ${r.cabeza}, resto en ${r.cuerpo}`);
+  const cabeza = ITEMS.find((i) => i.fileName === 'huaso-cabeza.png');
+  const brazo = ITEMS.find((i) => i.fileName === 'huaso-brazo-der.png');
+  comprobar('la cabeza va a la cara del modelo', cabeza.pinnedToModel && cabeza.pinnedMalla === 'Cabeza');
+  comprobar('y el brazo al cuerpo', brazo.pinnedToModel && brazo.pinnedMalla === 'Torso');
+
+  let mensaje = '';
+  try {
+    await titi.clavar(s, { cabeza: 'NoExiste' });
+  } catch (err) {
+    mensaje = err.message;
+  }
+  comprobar('una malla inventada se rechaza con su nombre', mensaje.includes('NoExiste'));
+
+  const sueltas = await titi.soltar(s);
+  comprobar('soltar las despega todas', sueltas === 6 && ITEMS.every((i) => !i.pinnedToModel));
+}
+
+// 6. quitar
 {
   const fuera = await titi.quitar(s);
   comprobar('las saca todas de escena', fuera === 6 && ITEMS.length === 0);

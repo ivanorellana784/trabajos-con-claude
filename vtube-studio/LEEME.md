@@ -93,6 +93,9 @@ Una orden es una línea de JSON con un `id` propio:
 { id: 0013, hacer: crudo, tipo: ItemListRequest, datos: {} }
 ```
 
+- Los verbos viven en `remoto/verbos.mjs` y el vigía los **recarga solo** cuando
+  cambian en disco: tras un `actualizar` que traiga verbos nuevos, la vuelta
+  siguiente ya los entiende sin reiniciar nada.
 - **`actualizar`** trae al disco los archivos nuevos del repo (`git merge --ff-only`),
   así también llega el arte o el código recién escrito, no solo las órdenes.
 - Cada `id` se ejecuta **una sola vez**. Lo hecho queda anotado en `hechas.json`,
@@ -185,6 +188,22 @@ acompane. Fuera de Windows no hay voz, pero la boca se mueve igual.
 
 Las frases viven en `huaso/frases.json` y se piden por nombre. Anade las tuyas
 ahi: la clave es el nombre corto, el valor lo que dice.
+
+
+### Que siga tu cara, sin Cubism
+
+El huaso partido en piezas puede heredar el seguimiento facial del modelo que
+tengas cargado, clavando cada pieza a una malla suya:
+
+```bash
+node huaso/titiritero.mjs clavar      # la cabeza a la cara, el resto al cuerpo
+node huaso/titiritero.mjs soltar      # las despega
+```
+
+Adivina las mallas por nombre (en Wanko: D_FACE_00 y D_BODY_00). Si no acierta,
+se le dicen a mano con `--cabeza` y `--cuerpo`; `mirar mallas` desde el vigia
+lista las que tiene el modelo. No doble el codo ni parpadea -eso es Cubism-,
+pero sigue tu cara, que es lo que mas se nota.
 
 ### Hasta donde llega
 

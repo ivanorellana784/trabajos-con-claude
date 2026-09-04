@@ -22,6 +22,8 @@ await writeFile(FRASES, JSON.stringify({ frases: { hola: 'hola' } }), 'utf8');
 
 const servidor = await arrancar(PUERTO);
 const vigia = await import('../remoto/escucha.mjs');
+const verbos = await import('../remoto/verbos.mjs');
+import { utimes } from 'node:fs/promises';
 
 let fallos = 0;
 function comprobar(que, condicion, detalle = '') {
@@ -153,7 +155,52 @@ console.log('\nVigia de ordenes - pruebas\n');
   comprobar('99 vueltas no se bailan', (r.fallidas.find((f) => f.id === 'baile-malo') || {}).por.includes('1 a 8'));
 }
 
-// 9. ordenes sin id: se ignoran en vez de repetirse para siempre
+// 9. las ordenes que no hablan con VTube Studio no lo exigen abierto
+{
+  const cerrado = () => {
+    throw new Error('VTube Studio cerrado (de mentira)');
+  };
+  let que = '';
+  try {
+    que = await verbos.aplicar(cerrado, { hacer: 'hablar', texto: 'hola' });
+  } catch (err) {
+    que = 'FALLO: ' + err.message;
+  }
+  comprobar('hablar no pide la sesion del vigia (usa la suya)', !que.startsWith('FALLO'), que);
+
+  let motivo = '';
+  try {
+    await verbos.aplicar(cerrado, { hacer: 'disparar', que: 'Saludo' });
+  } catch (err) {
+    motivo = err.message;
+  }
+  comprobar('disparar si la pide, y falla claro si no hay', motivo.includes('cerrado'));
+}
+
+// 10. mirar las mallas, que es lo que hace falta para clavar
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([{ id: 'mira-mallas', hacer: 'mirar', que: 'mallas' }]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('mirar mallas sale bien', r.hechas.length === 1, (r.fallidas[0] || {}).por);
+  comprobar('y deja la lista en el informe', Array.isArray((estado.informes.mallas || {}).artMeshNames) && estado.informes.mallas.artMeshNames.includes('Cabeza'));
+}
+
+// 11. los verbos se recargan cuando cambia el archivo
+{
+  const uno = await vigia.cargarVerbos();
+  const dos = await vigia.cargarVerbos();
+  comprobar('sin cambios, devuelve el mismo modulo', uno === dos);
+  const ruta = new URL('../remoto/verbos.mjs', import.meta.url);
+  const luego = new Date(Date.now() + 5000);
+  await utimes(ruta, luego, luego);
+  const tres = await vigia.cargarVerbos();
+  comprobar('si el archivo cambia, carga uno nuevo', tres !== uno && typeof tres.aplicar === 'function');
+  const ahora = new Date();
+  await utimes(ruta, ahora, ahora);
+}
+
+// 12. ordenes sin id: se ignoran en vez de repetirse para siempre
 {
   const estado = await vigia.arrancarEstado();
   await escribir([{ hacer: 'disparar', que: 'Saludo' }]);

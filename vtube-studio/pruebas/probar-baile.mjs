@@ -135,14 +135,29 @@ console.log('\nBaile y habla - pruebas\n');
   comprobar('sin voz cuando no hay Windows detras', r.conVoz === false);
 }
 
-// 8. la forma de la boca
+// 8. con voz, la boca se mueve MIENTRAS suena, no despues
+{
+  INYECCIONES.length = 0;
+  const dormir = (ms) => new Promise((listo) => setTimeout(listo, ms));
+  const arranque = Date.now();
+  const r = await hablar(s, 'una frase larga para que la estimacion fuera de segundos', {
+    lanzarVoz: async () => ({ hasta: dormir(400) }),
+    ...callado,
+  });
+  const tardo = Date.now() - arranque;
+  comprobar('cuenta que hubo voz', r.conVoz === true);
+  comprobar('la boca se movio mientras duraba la voz', r.gestos >= 5 && r.gestos <= 14, `${r.gestos} gestos en ${tardo} ms`);
+  comprobar('y termino con la voz, sin sumar la duracion estimada', tardo < 1000, `${tardo} ms`);
+}
+
+// 9. la forma de la boca
 {
   const valores = [0, 0.1, 0.2, 0.3, 0.4].map(apertura);
   comprobar('la apertura varia con el tiempo', new Set(valores).size > 2, valores.join(' '));
   comprobar('nunca es negativa', valores.every((v) => v >= 0));
 }
 
-// 9. el catalogo de frases
+// 10. el catalogo de frases
 {
   const todas = await frases();
   comprobar('el catalogo trae frases', Object.keys(todas).length >= 3, Object.keys(todas).join(', '));
@@ -157,7 +172,7 @@ console.log('\nBaile y habla - pruebas\n');
   comprobar('y si no esta, lista las que hay', mensaje.includes('saludo'));
 }
 
-// 10. texto imposible
+// 11. texto imposible
 {
   let vacio = '';
   try {

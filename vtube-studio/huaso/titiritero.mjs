@@ -7,6 +7,8 @@
 //   node titiritero.mjs armar          pone las piezas en su sitio
 //   node titiritero.mjs bailar 3       tres vueltas de cueca
 //   node titiritero.mjs saludar
+//   node titiritero.mjs clavar         las clava al modelo cargado: siguen tu cara
+//   node titiritero.mjs soltar         las despega
 //   node titiritero.mjs quitar         las saca de escena
 //
 //   --tam 0.9   --x 0   --y -0.05      para encajarlo a ojo la primera vez
@@ -18,7 +20,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { sesion } from '../vts.mjs';
+import { sesion, modeloActual } from '../vts.mjs';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const PIEZAS = join(DIR, 'salida', 'piezas');
@@ -207,6 +209,82 @@ export async function animar(s, guion, { veces = 1, segundosPorVuelta = 4, fps =
   return { fotogramas: total, piezas: puestas.size };
 }
 
+// --- clavar: heredar el rigging del modelo anfitrion --------------------
+//
+// VTube Studio deja pegar un item a una malla del modelo que tengas cargado,
+// y a partir de ahi el item va donde vaya la malla, seguimiento facial
+// incluido. Es la forma de que el huaso siga tu cara sin tener rig propio: la
+// cabeza va clavada a la cara del modelo, y el resto a su cuerpo.
+//
+// Las mallas se adivinan por nombre. En Wanko la cara es D_FACE_00 y el cuerpo
+// D_BODY_00; en otros modelos suelen llamarse Face, Head, Body o Torso. Si no
+// se acierta, se dice cuales hay y se pueden dar a mano.
+const PISTAS = {
+  cabeza: /face|head|kao|cabeza|cara/i,
+  cuerpo: /body|torso|cuerpo|karada/i,
+};
+
+export async function mallasDelModelo(s) {
+  const r = await s.pedir('ArtMeshListRequest', {});
+  return r.artMeshNames || [];
+}
+
+// La primera por orden alfabetico: D_FACE_00 antes que D_FACE_01, que es lo
+// que quieres cuando los numeros son capas de la misma cosa.
+export function adivinarMalla(mallas, pista) {
+  return [...mallas].filter((m) => pista.test(m)).sort()[0] || null;
+}
+
+async function pegar(s, modelID, instanceID, malla, pin) {
+  await s.pedir('ItemPinRequest', {
+    pin,
+    itemInstanceID: instanceID,
+    angleRelativeTo: 'RelativeToModel',
+    sizeRelativeTo: 'RelativeToCurrentItemSize',
+    vertexPinType: 'Center',
+    pinInfo: {
+      modelID,
+      artMeshID: pin ? malla : '',
+      angle: 0,
+      size: 0.5,
+      vertexID1: 0, vertexID2: 0, vertexID3: 0,
+      vertexWeight1: 0, vertexWeight2: 0, vertexWeight3: 0,
+    },
+  });
+}
+
+export async function clavar(s, { cabeza, cuerpo, ...opciones } = {}) {
+  const modelo = await modeloActual(s);
+  if (!modelo.modelLoaded) throw new Error('No hay ningun modelo cargado al que clavar el huaso.');
+
+  const mallas = await mallasDelModelo(s);
+  const mallaCabeza = cabeza || adivinarMalla(mallas, PISTAS.cabeza);
+  const mallaCuerpo = cuerpo || adivinarMalla(mallas, PISTAS.cuerpo);
+  if (!mallaCabeza || !mallaCuerpo) {
+    throw new Error(
+      `No adivino a que mallas clavarlo en "${modelo.modelName}". Dimelo con --cabeza y --cuerpo. Hay estas:\n` +
+        mallas.map((m) => `  - ${m}`).join('\n')
+    );
+  }
+  const desconocida = [mallaCabeza, mallaCuerpo].find((m) => !mallas.includes(m));
+  if (desconocida) throw new Error(`La malla "${desconocida}" no existe en "${modelo.modelName}".`);
+
+  const puestas = await armar(s, opciones);
+  for (const [nombre, instanceID] of puestas) {
+    await pegar(s, modelo.modelID, instanceID, nombre === 'huaso-cabeza' ? mallaCabeza : mallaCuerpo, true);
+  }
+  return { clavadas: puestas.size, cabeza: mallaCabeza, cuerpo: mallaCuerpo, modelo: modelo.modelName };
+}
+
+export async function soltar(s) {
+  const modelo = await modeloActual(s);
+  const puestas = await enEscena(s);
+  for (const instanceID of puestas.values()) {
+    await pegar(s, modelo.modelID || '', instanceID, '', false);
+  }
+  return puestas.size;
+}
+
 export async function quitar(s) {
   const puestas = await enEscena(s);
   if (!puestas.size) return 0;
@@ -228,7 +306,11 @@ El titiritero del huaso
   node titiritero.mjs armar       pone las seis piezas en escena
   node titiritero.mjs bailar [n]  n vueltas de cueca (1 por defecto)
   node titiritero.mjs saludar
+  node titiritero.mjs clavar      las pega al modelo cargado: siguen tu cara
+  node titiritero.mjs soltar      las despega
   node titiritero.mjs quitar
+
+  --cabeza D_FACE_00  --cuerpo D_BODY_00   si no adivina las mallas
 
   --tam 0.9  --x 0  --y 0         para encajarlo la primera vez
 `;
@@ -240,7 +322,12 @@ if (soyElPrograma) {
     const i = args.indexOf(bandera);
     return i === -1 ? porDefecto : Number(args[i + 1]);
   };
+  const texto = (bandera) => {
+    const i = args.indexOf(bandera);
+    return i === -1 ? undefined : args[i + 1];
+  };
   const opciones = { tam: valor('--tam', 0.9), x: valor('--x', 0), y: valor('--y', 0) };
+  const mallas = { cabeza: texto('--cabeza'), cuerpo: texto('--cuerpo') };
   const orden = (args[0] || 'ayuda').toLowerCase();
   const veces = Number(args.find((a, i) => i > 0 && /^\d+$/.test(a)) || 1);
 
@@ -260,6 +347,11 @@ if (soyElPrograma) {
     } else if (orden === 'saludar') {
       const r = await animar(s, saludo, { veces, segundosPorVuelta: 2.5, ...opciones });
       salida(`\n  Saludo hecho (${r.fotogramas} fotogramas).\n`);
+    } else if (orden === 'clavar') {
+      const r = await clavar(s, { ...opciones, ...mallas });
+      salida(`\n  ${r.clavadas} piezas clavadas a ${r.modelo}: cabeza en ${r.cabeza}, resto en ${r.cuerpo}. Mueve la cara.\n`);
+    } else if (orden === 'soltar') {
+      salida(`\n  ${await soltar(s)} piezas sueltas.\n`);
     } else if (orden === 'quitar') {
       salida(`\n  ${await quitar(s)} piezas fuera.\n`);
     } else {
