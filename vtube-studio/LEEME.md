@@ -111,6 +111,13 @@ Se cambian con variables de entorno, ninguna es obligatoria:
 | `VTS_AUTOR` | `Ivan` | el autor que aparece en la ventana de permiso |
 | `VTS_TOKEN` | `token.json` de esta carpeta | dónde guardar la llave |
 
+## Un avatar de huaso
+
+En [`huaso/`](huaso/LEEME.md) hay un huaso chileno dibujado por capas: chupalla,
+chamanto, faja, pañuelo y espuelas. Sirve de dos maneras — como accesorios que
+se le ponen hoy mismo a tu modelo por este puente, o como el PSD de 44 capas
+para montar el avatar Live2D completo en Cubism.
+
 ## Pruebas
 
 Hay un VTube Studio de mentira que habla el mismo protocolo, así que el puente se

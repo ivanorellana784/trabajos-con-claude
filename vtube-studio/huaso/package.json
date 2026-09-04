@@ -1,0 +1,13 @@
+{
+  "name": "huaso-arte",
+  "private": true,
+  "type": "module",
+  "description": "Solo para REGENERAR el arte. El puente y vestir-huaso.mjs no necesitan nada de esto.",
+  "scripts": {
+    "generar": "node generar.mjs ./salida && node accesorios.mjs ./salida/accesorios"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "ag-psd": "^28.0.0"
+  }
+}

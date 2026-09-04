@@ -103,6 +103,11 @@ const EXPRESIONES = [
 ];
 
 export const registro = [];
+
+// Items en escena y mallas del modelo: lo que necesita vestir-huaso.mjs.
+export const ITEMS = [];
+const MALLAS = ['Cabeza', 'PeloFrente', 'OjoIzq', 'OjoDer', 'Boca', 'Torso', 'BrazoIzq', 'BrazoDer'];
+let siguienteItem = 1;
 let tokenEmitido = 'token-de-mentira-123';
 
 function responder(tipo, requestID, data) {
@@ -217,6 +222,85 @@ function atender(mensaje, sesion) {
     case 'MoveModelRequest':
       if (data.timeInSeconds === undefined) return error(requestID, 152, 'Falta timeInSeconds.');
       return responder('MoveModelResponse', requestID, {});
+
+    case 'ArtMeshListRequest': {
+      const cargado = MODELOS.find((m) => m.modelLoaded);
+      return responder('ArtMeshListResponse', requestID, {
+        modelLoaded: !!cargado,
+        numberOfArtMeshNames: cargado ? MALLAS.length : 0,
+        artMeshNames: cargado ? MALLAS : [],
+        artMeshTags: [],
+      });
+    }
+
+    case 'ItemLoadRequest': {
+      if (!data.fileName) return error(requestID, 152, 'Falta fileName.');
+      if (!data.customDataBase64) return error(requestID, 152, 'Falta la imagen.');
+      // VTube Studio no acepta imagenes de cualquier tamano.
+      if (data.customDataBase64.length > 8_000_000) {
+        return error(requestID, 900, 'La imagen pasa del limite.');
+      }
+      const item = {
+        fileName: data.fileName,
+        instanceID: `item-${siguienteItem++}`,
+        order: data.order ?? 0,
+        positionX: data.positionX ?? 0,
+        positionY: data.positionY ?? 0,
+        size: data.size ?? 0.32,
+        rotation: data.rotation ?? 0,
+        pinnedToModel: false,
+        pinnedMalla: '',
+        seVaAlDesconectar: data.unloadWhenPluginDisconnects !== false,
+      };
+      ITEMS.push(item);
+      return responder('ItemLoadResponse', requestID, {
+        instanceID: item.instanceID,
+        fileName: item.fileName,
+      });
+    }
+
+    case 'ItemListRequest': {
+      let enEscena = ITEMS;
+      if (data.onlyItemsWithFileName) {
+        enEscena = enEscena.filter((i) => i.fileName === data.onlyItemsWithFileName);
+      }
+      if (data.onlyItemsWithInstanceID) {
+        enEscena = enEscena.filter((i) => i.instanceID === data.onlyItemsWithInstanceID);
+      }
+      return responder('ItemListResponse', requestID, {
+        itemInstancesInScene: data.includeItemInstancesInScene === false ? [] : enEscena,
+        availableItemFiles: [],
+        availableSpots: [],
+      });
+    }
+
+    case 'ItemUnloadRequest': {
+      const fuera = ITEMS.filter((i) =>
+        data.unloadAllInScene ||
+        data.unloadAllLoadedByThisPlugin ||
+        (data.fileNames || []).includes(i.fileName) ||
+        (data.instanceIDs || []).includes(i.instanceID));
+      for (const i of fuera) ITEMS.splice(ITEMS.indexOf(i), 1);
+      return responder('ItemUnloadResponse', requestID, {
+        unloadedItems: fuera.map((i) => ({ fileName: i.fileName, instanceID: i.instanceID })),
+      });
+    }
+
+    case 'ItemPinRequest': {
+      const item = ITEMS.find((i) => i.instanceID === data.itemInstanceID);
+      if (!item) return error(requestID, 152, 'Ese item no esta en escena.');
+      const malla = (data.pinInfo || {}).artMeshID;
+      if (data.pin && !MALLAS.includes(malla)) {
+        return error(requestID, 780, `La malla "${malla}" no existe en el modelo.`);
+      }
+      item.pinnedToModel = !!data.pin;
+      item.pinnedMalla = data.pin ? malla : '';
+      return responder('ItemPinResponse', requestID, {
+        isPinned: item.pinnedToModel,
+        itemInstanceID: item.instanceID,
+        itemFileName: item.fileName,
+      });
+    }
 
     // --- solo para las pruebas del cliente websocket ---
 
