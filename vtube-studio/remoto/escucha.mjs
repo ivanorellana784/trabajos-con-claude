@@ -139,6 +139,28 @@ function hablarRemoto(orden) {
   return correrHuaso('hablar.mjs', [texto]);
 }
 
+// El titere: las seis piezas del huaso movidas como muneco articulado.
+const TITERE = ['armar', 'bailar', 'saludar', 'quitar'];
+
+function titereRemoto(orden) {
+  const que = String(orden.que || 'armar');
+  if (!TITERE.includes(que)) throw new Error(`"${que}" no es una orden del titere (${TITERE.join(', ')})`);
+  const args = [que];
+  if (orden.veces !== undefined) {
+    const veces = Math.round(Number(orden.veces));
+    if (!(veces >= 1 && veces <= 8)) throw new Error(`"veces" va de 1 a 8, no ${orden.veces}`);
+    args.push(String(veces));
+  }
+  // El encuadre: la primera vez casi siempre hay que ajustarlo a ojo.
+  for (const [clave, min, max] of [['tam', 0.1, 2], ['x', -1, 1], ['y', -1, 1]]) {
+    if (orden[clave] === undefined) continue;
+    const v = Number(orden[clave]);
+    if (!(v >= min && v <= max)) throw new Error(`"${clave}" va de ${min} a ${max}, no ${orden[clave]}`);
+    args.push(`--${clave}`, String(v));
+  }
+  return correrHuaso('titiritero.mjs', args);
+}
+
 // Trae al disco lo que ya se descargo en el fetch de esta misma vuelta.
 async function actualizar() {
   const { stdout } = await ejecutar('git', ['merge', '--ff-only', `origin/${CONFIG.rama}`], {
@@ -202,6 +224,8 @@ export async function aplicar(s, orden) {
       return bailarRemoto(orden);
     case 'hablar':
       return hablarRemoto(orden);
+    case 'titere':
+      return titereRemoto(orden);
     case 'actualizar':
       return actualizar();
     default:
