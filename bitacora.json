@@ -1,11 +1,26 @@
 {
-  "cuando": "2026-09-04T18:38:24.226Z",
+  "cuando": "2026-09-04T18:38:27.158Z",
   "vueltas": 1,
   "ultimas": [
     {
-      "id": "nueva-1",
+      "id": "exp-1",
       "ok": true,
-      "que": "hotkey \"Sonrojo\""
+      "que": "expresion \"Sonrojo\" puesta"
+    },
+    {
+      "id": "mov-1",
+      "ok": true,
+      "que": "modelo movido (positionX)"
+    },
+    {
+      "id": "mod-1",
+      "ok": true,
+      "que": "modelo \"Zorro Nocturno\""
+    },
+    {
+      "id": "cru-1",
+      "ok": true,
+      "que": "peticion StatisticsRequest"
     }
   ],
   "informes": {}
