@@ -235,6 +235,16 @@ function atender(mensaje, sesion) {
 
     case 'ItemLoadRequest': {
       if (!data.fileName) return error(requestID, 152, 'Falta fileName.');
+      // La regla es la del VTube Studio de verdad, palabra por palabra: sin
+      // esto, aqui pasaba lo que alli se rechaza.
+      if (!/^[a-zA-Z0-9-]+\.(png|jpg)$/.test(data.fileName) ||
+          data.fileName.length < 8 || data.fileName.length > 32) {
+        return error(requestID, 154,
+          'Invalid filename provided. Even when loading custom image data, you must ' +
+          'provide a valid filename. It can only contain alphanumeric characters and ' +
+          'hyphens and must end with .jpg or .png. Filenames for custom data must be ' +
+          'between 8 and 32 characters long.');
+      }
       if (!data.customDataBase64) return error(requestID, 152, 'Falta la imagen.');
       // VTube Studio no acepta imagenes de cualquier tamano.
       if (data.customDataBase64.length > 8_000_000) {

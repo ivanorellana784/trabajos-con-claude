@@ -49,7 +49,12 @@ console.log('\nVestir de huaso - pruebas\n');
   comprobar('nombra cada pieza al ponerla',
     ['chupalla', 'chamanto', 'bigote', 'panuelo', 'espuela'].every((p) => texto.includes(p)));
   comprobar('las manda con imagen propia, no por nombre de archivo',
-    ITEMS.every((i) => i.fileName.startsWith('huaso_')));
+    ITEMS.every((i) => i.fileName.startsWith('huaso-')));
+  // VTube Studio rechaza el guion bajo, y su mensaje no dice cual es el fallo.
+  comprobar('los nombres cumplen lo que exige VTube Studio',
+    ITEMS.every((i) => /^[a-zA-Z0-9-]+\.png$/.test(i.fileName)
+      && i.fileName.length >= 8 && i.fileName.length <= 32),
+    ITEMS.map((i) => i.fileName).join(' '));
   // Sin esto, los items se irian en cuanto el CLI termina: el fallo mas facil
   // de cometer aqui y el mas dificil de entender despues.
   comprobar('quedan puestas aunque el programa termine',
@@ -61,11 +66,11 @@ console.log('\nVestir de huaso - pruebas\n');
 // 1b. el huaso entero es una pieza aparte, no entra con los accesorios
 {
   comprobar('poner sin argumentos NO mete la figura entera',
-    !ITEMS.some((i) => i.fileName === 'huaso_huaso.png'));
+    !ITEMS.some((i) => i.fileName === 'huaso-huaso.png'));
   await correr('quitar');
   const { texto } = await correr('poner', 'huaso');
   comprobar('poner huaso mete la figura entera', ITEMS.length === 1
-    && ITEMS[0].fileName === 'huaso_huaso.png');
+    && ITEMS[0].fileName === 'huaso-huaso.png');
   comprobar('avisa de que no seguira a tu cara', texto.includes('no sigue a tu cara'));
   comprobar('va detras de los accesorios',
     ITEMS[0].order < Math.min(20, 21, 22, 23, 24), `capa ${ITEMS[0].order}`);
@@ -93,7 +98,7 @@ console.log('\nVestir de huaso - pruebas\n');
 // 5. clavar
 {
   const { texto, codigo } = await correr('clavar', 'chupalla', 'Cabeza');
-  const item = ITEMS.find((i) => i.fileName === 'huaso_chupalla.png');
+  const item = ITEMS.find((i) => i.fileName === 'huaso-chupalla.png');
   comprobar('clava la pieza a la malla', item?.pinnedToModel === true && item?.pinnedMalla === 'Cabeza');
   comprobar('lo dice en castellano', texto.includes('sigue al modelo'), '');
   comprobar('termina bien', codigo === 0);
@@ -102,7 +107,7 @@ console.log('\nVestir de huaso - pruebas\n');
 // 6. soltar
 {
   await correr('soltar', 'chupalla');
-  const item = ITEMS.find((i) => i.fileName === 'huaso_chupalla.png');
+  const item = ITEMS.find((i) => i.fileName === 'huaso-chupalla.png');
   comprobar('soltar la despega', item?.pinnedToModel === false);
 }
 

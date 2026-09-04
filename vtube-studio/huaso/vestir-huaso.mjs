@@ -33,7 +33,10 @@ export const PIEZAS = {
 const ACCESORIOS_SUELTOS = ['chupalla', 'chamanto', 'bigote', 'panuelo', 'espuela'];
 
 const salida = (texto) => console.log(texto);
-const nombreArchivo = (pieza) => `huaso_${pieza}.png`;
+// VTube Studio solo acepta nombres alfanumericos con guiones, terminados en
+// .png o .jpg y de 8 a 32 caracteres. El guion BAJO no vale: con el, la carga
+// falla con "Invalid filename provided".
+const nombreArchivo = (pieza) => `huaso-${pieza}.png`;
 
 async function cargarPieza(s, pieza, ajustes = {}) {
   const base = PIEZAS[pieza];
