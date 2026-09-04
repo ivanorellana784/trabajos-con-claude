@@ -125,7 +125,7 @@ export async function arrancarEstado({ todo = false } = {}) {
       for (const id of JSON.parse(await readFile(CONFIG.hechas, 'utf8')).hechas || []) hechas.add(String(id));
     } catch {}
   }
-  return { hechas, virgen: virgen && !todo, sesion: null, informes: {}, ultimas: [], vueltas: 0, fallobitacora: null };
+  return { hechas, virgen: virgen && !todo, sesion: null, informes: {}, ultimas: [], vueltas: 0, fallobitacora: null, esperando: new Set() };
 }
 
 async function guardarHechas(estado) {
@@ -159,12 +159,23 @@ export async function unaVuelta(estado) {
       if (r.informe) estado.informes[r.informe.clave] = r.informe.datos;
       hechas.push({ id: orden.id, que: r.que });
     } catch (err) {
+      if (err && err.desconocido) {
+        // Un verbo que aun no existe puede llegar con la proxima recarga de
+        // verbos.mjs. La orden se queda pendiente -sin marcarla hecha- y se
+        // avisa una sola vez, no cada quince segundos.
+        if (!estado.esperando.has(String(orden.id))) {
+          estado.esperando.add(String(orden.id));
+          fallidas.push({ id: orden.id, por: `${err.message} (queda pendiente por si llega con una actualizacion)` });
+        }
+        continue;
+      }
       fallidas.push({ id: orden.id, por: err && err.message ? err.message : String(err) });
       if (estado.sesion && !estado.sesion.abierta) estado.sesion = null;
     }
     // Hecha o fallida, no se reintenta: si no, una orden rota se repetiria sola
     // cada quince segundos hasta el fin de los tiempos.
     estado.hechas.add(String(orden.id));
+    estado.esperando.delete(String(orden.id));
   }
   if (nuevas.length) await guardarHechas(estado);
 

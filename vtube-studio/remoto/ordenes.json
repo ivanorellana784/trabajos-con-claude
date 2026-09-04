@@ -39,6 +39,13 @@
       "que": "clavar",
       "tam": 0.9,
       "y": -0.05
+    },
+    {
+      "id": "clavar-cara-2",
+      "hacer": "titere",
+      "que": "clavar",
+      "tam": 0.9,
+      "y": -0.05
     }
   ]
 }

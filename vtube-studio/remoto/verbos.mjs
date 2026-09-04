@@ -190,8 +190,13 @@ export async function aplicar(obtenerSesion, orden) {
       return titereRemoto(orden);
     case 'actualizar':
       return actualizar();
-    default:
-      throw new Error(`no se que es "${orden.hacer}"`);
+    default: {
+      // Puede que el verbo no exista TODAVIA: si llega con la proxima recarga
+      // de este archivo, la orden debe seguir esperando, no darse por perdida.
+      const err = new Error(`no se que es "${orden.hacer}"`);
+      err.desconocido = true;
+      throw err;
+    }
   }
 }
 

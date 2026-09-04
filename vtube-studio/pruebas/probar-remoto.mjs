@@ -114,6 +114,8 @@ console.log('\nVigia de ordenes - pruebas\n');
 
   const otra = await vigia.unaVuelta(estado);
   comprobar('y las rotas no se reintentan cada vuelta', otra.hechas.length === 0 && otra.fallidas.length === 0);
+  comprobar('pero la de verbo desconocido queda pendiente, no hecha', !estado.hechas.has('rota-1') && estado.esperando.has('rota-1'));
+  comprobar('mientras que las otras rotas si se dan por hechas', estado.hechas.has('rota-2') && estado.hechas.has('rota-3'));
 }
 
 // 7. bailar y hablar, que salen a programas aparte
