@@ -149,7 +149,7 @@ if (soyElPrograma) {
   const args = process.argv.slice(2);
   const voz = !args.includes('--sin-voz');
   const i = args.indexOf('--frase');
-  const sueltas = args.filter((a, n) => !a.startsWith('--') && n !== i + 1);
+  const sueltas = args.filter((a, n) => !a.startsWith('--') && (i === -1 || n !== i + 1));
 
   const s = await sesion({ aviso: salida });
   try {

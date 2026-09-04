@@ -32,9 +32,24 @@ export const CUECA = [
   { paso: 'zapateo',    dy:  0.02,             dtam:  2, tiempos: 0.5 },
   { paso: 'media luna', dx: -0.08, dy:  0.04, giro: -12, tiempos: 1 },
   { paso: 'media luna', dx:  0.08, dy:  0.04, giro:  12, tiempos: 1 },
-  { paso: 'la vuelta',  giro: 360,                       tiempos: 2 },
+  { paso: 'la vuelta',  vuelta: true,                    tiempos: 2 },
   { paso: 'al centro',                                   tiempos: 1 },
 ];
+
+// Lo que VTube Studio acepta, y no es lo mismo para el modelo que para un
+// item: el modelo mide de -100 a 100 y un item de 0 a 1. Pasarse de estos
+// numeros no deforma nada, simplemente rechaza la peticion entera.
+const LIMITES = {
+  modelo: { x: [-1000, 1000], y: [-1000, 1000], giro: [-360, 360], tam: [-100, 100], porTam: 1 },
+  item: { x: [-2, 2], y: [-2, 2], giro: [-360, 360], tam: [0.05, 1], porTam: 0.01 },
+};
+
+const acotar = (v, [min, max]) => Math.min(max, Math.max(min, v));
+
+// Un angulo cualquiera llevado a (-180, 180]. Hace falta porque VTube Studio
+// devuelve rotaciones como 360 -que es lo mismo que 0-, y sumarle los grados
+// del paso a eso se sale de rango y tumba el baile entero.
+const normalizarGiro = (g) => ((((g + 180) % 360) + 360) % 360) - 180;
 
 const dormir = (ms) => new Promise((listo) => setTimeout(listo, ms));
 const salida = (texto) => console.log(texto);
@@ -78,19 +93,26 @@ async function sitioDelItem(s, referencia) {
   };
 }
 
-// Un solo movimiento, en absoluto: sitio de partida mas la diferencia del paso.
-function destino(base, paso) {
+// Un solo movimiento, en absoluto: sitio de partida mas la diferencia del
+// paso, recortado a lo que el programa acepta. Recortar y no fallar es lo
+// correcto aqui: si el personaje ya esta pegado al borde, que baile lo que
+// quepa en vez de negarse a bailar.
+function destino(base, paso, limites) {
   return {
-    x: base.x + (paso.dx || 0),
-    y: base.y + (paso.dy || 0),
-    giro: base.giro + (paso.giro || 0),
-    tam: base.tam + (paso.dtam || 0),
+    x: acotar(base.x + (paso.dx || 0), limites.x),
+    y: acotar(base.y + (paso.dy || 0), limites.y),
+    giro: acotar(base.giro + (paso.giro || 0), limites.giro),
+    tam: acotar(base.tam + (paso.dtam || 0) * limites.porTam, limites.tam),
   };
 }
 
+// VTube Studio no interpola mas de dos segundos por peticion. Si el compas
+// pide mas, el movimiento dura dos y la espera musical sigue siendo la suya.
+const tiempoQueAcepta = (segundos) => Math.min(2, Math.max(0, segundos));
+
 async function moverModelo(s, a, segundos) {
   await s.pedir('MoveModelRequest', {
-    timeInSeconds: segundos,
+    timeInSeconds: tiempoQueAcepta(segundos),
     valuesAreRelativeToModel: false,
     positionX: a.x,
     positionY: a.y,
@@ -104,7 +126,7 @@ async function moverItem(s, instanceID, a, segundos) {
     itemsToMove: [
       {
         itemInstanceID: instanceID,
-        timeInSeconds: segundos,
+        timeInSeconds: tiempoQueAcepta(segundos),
         fadeMode: 'easeBoth',
         positionX: a.x,
         positionY: a.y,
@@ -116,22 +138,42 @@ async function moverItem(s, instanceID, a, segundos) {
   });
 }
 
+// Una vuelta entera no cabe en una sola peticion: sumarle 360 grados a donde
+// ya este el modelo se pasa del limite casi siempre. Se da en dos medias
+// vueltas, con un salto invisible en medio -mas 180 grados es el mismo angulo
+// que menos 180-, y el resultado en pantalla es un giro completo.
+async function vueltaEntera(mover, base, segundos, limites) {
+  const media = segundos / 2;
+  await mover({ ...base, giro: acotar(base.giro + 180, limites.giro) }, media);
+  await dormir(media * 1000);
+  await mover({ ...base, giro: acotar(base.giro - 180, limites.giro) }, 0);
+  await mover(base, media);
+  await dormir(media * 1000);
+}
+
 export async function bailar(s, { veces = 1, bpm = 126, item = null, coreografia = CUECA, avisar = salida } = {}) {
-  const base = item ? await sitioDelItem(s, item) : await sitioDelModelo(s);
+  const crudo = item ? await sitioDelItem(s, item) : await sitioDelModelo(s);
+  const limites = item ? LIMITES.item : LIMITES.modelo;
+  const base = { ...crudo, giro: normalizarGiro(crudo.giro) };
   const mover = item
     ? (a, seg) => moverItem(s, base.instanceID, a, seg)
     : (a, seg) => moverModelo(s, a, seg);
   const compas = 60 / bpm; // lo que dura un tiempo, en segundos
 
-  avisar(`\n  Baila ${base.nombre} a ${bpm} bpm, ${veces} vez(ces)\n`);
+  avisar(`\n  Baila ${base.nombre} a ${bpm} bpm, ${veces} vez(ces)`);
+  avisar(`  parte de x=${base.x} y=${base.y} giro=${base.giro} tam=${base.tam}\n`);
   let pasos = 0;
   try {
     for (let vuelta = 1; vuelta <= veces; vuelta++) {
       for (const paso of coreografia) {
         const segundos = (paso.tiempos || 1) * compas;
-        await mover(destino(base, paso), segundos);
+        if (paso.vuelta) {
+          await vueltaEntera(mover, base, segundos, limites);
+        } else {
+          await mover(destino(base, paso, limites), segundos);
+          await dormir(segundos * 1000);
+        }
         avisar(`  ${paso.paso}`);
-        await dormir(segundos * 1000);
         pasos++;
       }
     }

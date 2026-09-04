@@ -251,6 +251,18 @@ function atender(mensaje, sesion) {
 
     case 'MoveModelRequest': {
       if (data.timeInSeconds === undefined) return error(requestID, 152, 'Falta timeInSeconds.');
+      const fuera = (v, min, max) => v !== undefined && (!(Number(v) >= min) || !(Number(v) <= max));
+      if (fuera(data.positionX, -1000, 1000) || fuera(data.positionY, -1000, 1000) ||
+          fuera(data.rotation, -360, 360) || fuera(data.size, -100, 100) ||
+          fuera(data.timeInSeconds, 0, 2)) {
+        return error(requestID, 158,
+          'Your position/size/rotation/time values are too high or low. Make sure the ' +
+          'X/Y positions stay within +/- 1000. +/- 1 is the right/left/top/bottom corner ' +
+          'of the window respectively. Rotation should be between -360 and 360. Positive ' +
+          'rotation is clockwise, negative is counter-clockwise. Size should be between ' +
+          '-100 (smallest) and 100 (biggest). For time, keep the value between 0 (instant ' +
+          'change) and 2 (smooth fade over 2 seconds).');
+      }
       const campos = [['positionX', 'x'], ['positionY', 'y'], ['rotation', 'giro'], ['size', 'tam']];
       for (const [campo, clave] of campos) {
         if (data[campo] !== undefined) POSICION[clave] = Number(data[campo]);

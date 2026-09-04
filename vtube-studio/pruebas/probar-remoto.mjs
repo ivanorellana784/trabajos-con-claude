@@ -123,6 +123,7 @@ console.log('\nVigia de ordenes - pruebas\n');
   await escribir([
     { id: 'baile-1', hacer: 'bailar', veces: 1, bpm: 300 },
     { id: 'habla-1', hacer: 'hablar', frase: 'hola' },
+    { id: 'habla-2', hacer: 'hablar', texto: 'hola' },
   ]);
   const r = await vigia.unaVuelta(estado);
 
@@ -134,7 +135,8 @@ console.log('\nVigia de ordenes - pruebas\n');
     `partia de x=${partida.x}, quedo en x=${final.x}`
   );
   comprobar('la frase mueve la boca', INYECCIONES.some((i) => i.id === 'MouthOpen'), `${INYECCIONES.length} gestos`);
-  comprobar('las dos ordenes se dan por hechas', r.hechas.length === 2 && r.fallidas.length === 0, (r.fallidas[0] || {}).por);
+  comprobar('el texto suelto tambien llega a decirse', (r.hechas.find((h) => h.id === 'habla-2') || {}).que !== undefined, (r.fallidas.find((f) => f.id === 'habla-2') || {}).por);
+  comprobar('las tres ordenes se dan por hechas', r.hechas.length === 3 && r.fallidas.length === 0, (r.fallidas[0] || {}).por);
 }
 
 // 8. y no aceptan cualquier cosa

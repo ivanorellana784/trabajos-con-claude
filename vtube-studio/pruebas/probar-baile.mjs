@@ -33,11 +33,15 @@ console.log('\nBaile y habla - pruebas\n');
   const r = await bailar(s, { veces: 1, bpm: 600, ...callado }); // bpm alto: la prueba no baila lento
 
   comprobar('da todos los pasos de la cueca', r.pasos === CUECA.length, `${r.pasos} pasos`);
-  comprobar('un movimiento por paso, mas la vuelta a su sitio', MOVIMIENTOS.length === CUECA.length + 1);
+  comprobar('un movimiento por paso, y la vuelta entera va en tres', MOVIMIENTOS.length === CUECA.length + 3);
 
   const xs = MOVIMIENTOS.map((m) => m.x);
   comprobar('se va a la izquierda y a la derecha', Math.min(...xs) < -0.1 && Math.max(...xs) > 0.1);
-  comprobar('da la vuelta entera', MOVIMIENTOS.some((m) => m.giro === 360));
+  comprobar(
+    'da la vuelta entera en dos mitades',
+    MOVIMIENTOS.some((m) => m.giro === 180) && MOVIMIENTOS.some((m) => m.giro === -180)
+  );
+  comprobar('sin salirse nunca del rango que acepta VTube Studio', MOVIMIENTOS.every((m) => m.giro >= -360 && m.giro <= 360));
 
   const final = MOVIMIENTOS[MOVIMIENTOS.length - 1];
   comprobar(
@@ -63,14 +67,26 @@ console.log('\nBaile y habla - pruebas\n');
   await s.pedir('MoveModelRequest', { timeInSeconds: 0, positionX: 0, positionY: 0, rotation: 0, size: 0 });
 }
 
-// 3. dos vueltas seguidas
+// 3. partir de un giro de 360, que es lo que tumbo el baile de verdad
+{
+  await s.pedir('MoveModelRequest', { timeInSeconds: 0, rotation: 360 });
+  MOVIMIENTOS.length = 0;
+  await bailar(s, { veces: 1, bpm: 600, ...callado });
+
+  comprobar('desde giro 360 no se pasa de rango', MOVIMIENTOS.every((m) => m.giro >= -360 && m.giro <= 360));
+  comprobar('porque 360 se entiende como 0', MOVIMIENTOS[MOVIMIENTOS.length - 1].giro === 0);
+  comprobar('y aun asi da la vuelta', MOVIMIENTOS.some((m) => Math.abs(m.giro) === 180));
+  await s.pedir('MoveModelRequest', { timeInSeconds: 0, rotation: 0 });
+}
+
+// 4. dos vueltas seguidas
 {
   MOVIMIENTOS.length = 0;
   const r = await bailar(s, { veces: 2, bpm: 900, ...callado });
   comprobar('dos vueltas dan el doble de pasos', r.pasos === CUECA.length * 2);
 }
 
-// 4. que baile un item, no el modelo
+// 5. que baile un item, no el modelo
 {
   // Un PNG de verdad: el servidor de mentira mide la imagen, como el de verdad.
   const dibujo = await readFile(new URL('../huaso/salida/accesorios/chupalla.png', import.meta.url));
@@ -95,7 +111,7 @@ console.log('\nBaile y habla - pruebas\n');
   );
 }
 
-// 5. si el item no esta, dice cual hay
+// 6. si el item no esta, dice cual hay
 {
   let mensaje = '';
   try {
@@ -106,7 +122,7 @@ console.log('\nBaile y habla - pruebas\n');
   comprobar('un item que no esta en escena se explica', mensaje.includes('huaso-entero.png'), mensaje.split('\n')[0]);
 }
 
-// 6. la boca, que es lo que hace creible el habla
+// 7. la boca, que es lo que hace creible el habla
 {
   INYECCIONES.length = 0;
   const r = await hablar(s, 'Buenas tardes tengan ustedes', { voz: false, ...callado });
@@ -119,14 +135,14 @@ console.log('\nBaile y habla - pruebas\n');
   comprobar('sin voz cuando no hay Windows detras', r.conVoz === false);
 }
 
-// 7. la forma de la boca
+// 8. la forma de la boca
 {
   const valores = [0, 0.1, 0.2, 0.3, 0.4].map(apertura);
   comprobar('la apertura varia con el tiempo', new Set(valores).size > 2, valores.join(' '));
   comprobar('nunca es negativa', valores.every((v) => v >= 0));
 }
 
-// 8. el catalogo de frases
+// 9. el catalogo de frases
 {
   const todas = await frases();
   comprobar('el catalogo trae frases', Object.keys(todas).length >= 3, Object.keys(todas).join(', '));
@@ -141,7 +157,7 @@ console.log('\nBaile y habla - pruebas\n');
   comprobar('y si no esta, lista las que hay', mensaje.includes('saludo'));
 }
 
-// 9. texto imposible
+// 10. texto imposible
 {
   let vacio = '';
   try {
