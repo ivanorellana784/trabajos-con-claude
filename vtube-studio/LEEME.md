@@ -58,6 +58,64 @@ A partir de ahí basta con pedirlo en palabras: *"mira qué hotkeys tiene el mod
 y dispara la del saludo"*, *"ponle la expresión de sonrojo"*, *"mueve el avatar a
 la esquina y hazlo un poco más pequeño"*.
 
+## 4. Editar desde la nube, que pase en tu PC
+
+Claude trabaja en un servidor y no alcanza tu `localhost` — pero no hace falta
+que lo alcance. **`remoto/ordenes.json` manda, y un vigía en tu PC obedece.**
+
+```
+Claude (nube)  ──escribe y sube──►  remoto/ordenes.json  (en el repo)
+                                            │
+                        cada 15s, por git    ▼
+                                     escucha.mjs  ──►  VTube Studio
+                                      (tu PC)
+```
+
+Se enciende con doble clic en **`remoto/vigia.cmd`**, o:
+
+```bash
+node remoto/escucha.mjs
+```
+
+Déjalo abierto. Cada quince segundos trae el archivo con `git fetch` —no por la
+web, que tiene cinco minutos de caché— y ejecuta lo que no haya hecho todavía.
+La primera vuelta da por vistas las órdenes que ya estén: no repite el pasado.
+
+Una orden es una línea de JSON con un `id` propio:
+
+```json
+{ id: 0007, hacer: disparar, que: Saludo }
+{ id: 0008, hacer: expresion, que: Sonrojo, activar: true }
+{ id: 0009, hacer: mover, x: 0.2, tam: 12 }
+{ id: 0010, hacer: cargar, que: zorro }
+{ id: 0011, hacer: vestir, que: poner, args: [huaso] }
+{ id: 0012, hacer: actualizar }
+{ id: 0013, hacer: crudo, tipo: ItemListRequest, datos: {} }
+```
+
+- **`actualizar`** trae al disco los archivos nuevos del repo (`git merge --ff-only`),
+  así también llega el arte o el código recién escrito, no solo las órdenes.
+- Cada `id` se ejecuta **una sola vez**. Lo hecho queda anotado en `hechas.json`,
+  que no se versiona; si una orden falla tampoco se reintenta, para que un error
+  no se repita cada quince segundos.
+
+### El interruptor
+
+```json
+{ encendido: false }
+```
+
+Con eso el vigía sigue mirando pero no obedece nada. Cerrar la ventana también
+lo para, claro.
+
+### Qué estás permitiendo
+
+Mientras el vigía corra, **lo que aparezca en `ordenes.json` se ejecuta en tu
+equipo**. El vocabulario es cerrado —las siete órdenes de arriba— y no hay manera
+de colar un comando de shell: `vestir` solo acepta sus seis subórdenes y filtra
+los argumentos. Aun así, es tu máquina obedeciendo un archivo remoto, y conviene
+saberlo antes de dejarlo encendido.
+
 ### Lo que Claude puede hacer una vez vinculado
 
 | Herramienta | Para qué |

@@ -10,3 +10,6 @@ desktop.ini
 
 # La llave que da VTube Studio al plugin: es de este equipo, no se comparte.
 vtube-studio/token.json
+
+# Lo que el vigia ya hizo: es de este equipo y se regenera solo.
+vtube-studio/remoto/hechas.json
