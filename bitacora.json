@@ -1,11 +1,26 @@
 {
-  "cuando": "2026-09-04T18:38:29.594Z",
+  "cuando": "2026-09-04T18:38:32.135Z",
   "vueltas": 1,
   "ultimas": [
     {
-      "id": "apagada-1",
+      "id": "buena-1",
       "ok": true,
       "que": "hotkey \"Saludo\""
+    },
+    {
+      "id": "rota-1",
+      "ok": false,
+      "por": "no se que es \"bailar\""
+    },
+    {
+      "id": "rota-2",
+      "ok": false,
+      "por": "No encontre la hotkey \"no existe esta hotkey\".\nHay estos:\n  - Saludo\n  - Sonrojo"
+    },
+    {
+      "id": "rota-3",
+      "ok": false,
+      "por": "\"rm -rf\" no es una orden de vestir-huaso (poner, quitar, mallas, comprobar, clavar, soltar)"
     }
   ],
   "informes": {}
