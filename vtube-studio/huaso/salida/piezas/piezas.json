@@ -1,0 +1,110 @@
+{
+  "lienzo": {
+    "ancho": 2048,
+    "alto": 2200
+  },
+  "piezas": {
+    "huaso-cabeza": {
+      "capas": 29,
+      "caja": {
+        "x": 605,
+        "y": 248,
+        "ancho": 838,
+        "alto": 624
+      },
+      "bisagra": {
+        "x": 1024,
+        "y": 872
+      },
+      "centro": {
+        "x": 1024,
+        "y": 560
+      }
+    },
+    "huaso-torso": {
+      "capas": 7,
+      "caja": {
+        "x": 559,
+        "y": 811,
+        "ancho": 930,
+        "alto": 1389
+      },
+      "bisagra": {
+        "x": 1024,
+        "y": 2200
+      },
+      "centro": {
+        "x": 1024,
+        "y": 1505.5
+      }
+    },
+    "huaso-brazo-izq": {
+      "capas": 3,
+      "caja": {
+        "x": 1218,
+        "y": 975,
+        "ancho": 166,
+        "alto": 1007
+      },
+      "bisagra": {
+        "x": 1342.5,
+        "y": 1035.42
+      },
+      "centro": {
+        "x": 1301,
+        "y": 1478.5
+      }
+    },
+    "huaso-brazo-der": {
+      "capas": 3,
+      "caja": {
+        "x": 664,
+        "y": 975,
+        "ancho": 166,
+        "alto": 1007
+      },
+      "bisagra": {
+        "x": 705.5,
+        "y": 1035.42
+      },
+      "centro": {
+        "x": 747,
+        "y": 1478.5
+      }
+    },
+    "huaso-chamanto-izq": {
+      "capas": 1,
+      "caja": {
+        "x": 1127,
+        "y": 943,
+        "ancho": 252,
+        "alto": 878
+      },
+      "bisagra": {
+        "x": 1253,
+        "y": 943
+      },
+      "centro": {
+        "x": 1253,
+        "y": 1382
+      }
+    },
+    "huaso-chamanto-der": {
+      "capas": 1,
+      "caja": {
+        "x": 669,
+        "y": 943,
+        "ancho": 252,
+        "alto": 878
+      },
+      "bisagra": {
+        "x": 795,
+        "y": 943
+      },
+      "centro": {
+        "x": 795,
+        "y": 1382
+      }
+    }
+  }
+}
