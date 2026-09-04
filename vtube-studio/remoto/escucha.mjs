@@ -23,7 +23,19 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { sesion, dispararHotkey, ponerExpresion, moverModelo, cargarModelo } from '../vts.mjs';
+import {
+  sesion,
+  dispararHotkey,
+  ponerExpresion,
+  moverModelo,
+  cargarModelo,
+  estado,
+  modeloActual,
+  modelos,
+  hotkeys,
+  expresiones,
+} from '../vts.mjs';
+import { publicar } from './bitacora.mjs';
 
 const ejecutar = promisify(execFile);
 const DIR = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +48,8 @@ export const CONFIG = {
   url: process.env.VTS_ORDENES_URL || null, // por web, si no hubiera git
   cada: Number(process.env.VTS_CADA || 15) * 1000,
   hechas: process.env.VTS_HECHAS || join(DIR, 'hechas.json'),
+  ramaBitacora: process.env.VTS_RAMA_BITACORA || 'vtube-bitacora',
+  bitacora: process.env.VTS_BITACORA !== 'no',
 };
 
 const ahora = () => new Date().toTimeString().slice(0, 8);
@@ -86,6 +100,30 @@ async function actualizar() {
   return `repo al dia (${stdout.trim().split('\n').pop()})`;
 }
 
+// Lo que se puede mirar. El resultado no se queda en la pantalla del vigia:
+// va a la bitacora, que se sube, y asi Claude lo lee desde la nube.
+const MIRABLES = {
+  estado: (s) => estado(s),
+  modelo: (s) => modeloActual(s),
+  modelos: (s) => modelos(s),
+  hotkeys: (s) => hotkeys(s),
+  expresiones: (s) => expresiones(s),
+  items: (s) =>
+    s.pedir('ItemListRequest', {
+      includeAvailableSpots: false,
+      includeItemInstancesInScene: true,
+      includeAvailableItemFiles: false,
+    }),
+};
+
+async function mirar(s, orden) {
+  const que = String(orden.que || '');
+  const mirador = MIRABLES[que];
+  if (!mirador) throw new Error(`no se mirar "${que}" (${Object.keys(MIRABLES).join(', ')})`);
+  const datos = await mirador(s);
+  return { que: `mirado: ${que}`, informe: { clave: que, datos } };
+}
+
 export async function aplicar(s, orden) {
   switch (orden.hacer) {
     case 'disparar': {
@@ -109,6 +147,8 @@ export async function aplicar(s, orden) {
       await s.pedir(orden.tipo, orden.datos || {});
       return `peticion ${orden.tipo}`;
     }
+    case 'mirar':
+      return mirar(s, orden);
     case 'vestir':
       return vestir(orden);
     case 'actualizar':
@@ -119,6 +159,32 @@ export async function aplicar(s, orden) {
 }
 
 // ------------------------------------------------- el bucle
+
+// Lo que se sube: el ultimo puñado de resultados y el ultimo vistazo a cada
+// cosa. Acotado a proposito, para que la rama no engorde sin freno.
+function contenidoBitacora(estado) {
+  return {
+    cuando: new Date().toISOString(),
+    vueltas: estado.vueltas,
+    ultimas: estado.ultimas.slice(-20),
+    informes: estado.informes,
+  };
+}
+
+async function subirBitacora(estado) {
+  try {
+    const r = await publicar(CONFIG.repo, contenidoBitacora(estado), { rama: CONFIG.ramaBitacora });
+    estado.fallobitacora = null;
+    return r;
+  } catch (err) {
+    // Sin credenciales de push esto falla, y no es motivo para parar: el vigia
+    // sigue obedeciendo aunque no pueda contar lo que hizo.
+    const por = err && err.message ? err.message.split('\n')[0] : String(err);
+    const repetido = estado.fallobitacora === por;
+    estado.fallobitacora = por;
+    return { error: por, repetido };
+  }
+}
 
 async function conVTube(estado) {
   if (estado.sesion && estado.sesion.abierta) return estado.sesion;
@@ -135,7 +201,7 @@ export async function arrancarEstado({ todo = false } = {}) {
       for (const id of JSON.parse(await readFile(CONFIG.hechas, 'utf8')).hechas || []) hechas.add(String(id));
     } catch {}
   }
-  return { hechas, virgen: virgen && !todo, sesion: null };
+  return { hechas, virgen: virgen && !todo, sesion: null, informes: {}, ultimas: [], vueltas: 0, fallobitacora: null };
 }
 
 async function guardarHechas(estado) {
@@ -163,8 +229,10 @@ export async function unaVuelta(estado) {
   const fallidas = [];
   for (const orden of nuevas) {
     try {
-      const que = await aplicar(await conVTube(estado), orden);
-      hechas.push({ id: orden.id, que });
+      const bruto = await aplicar(await conVTube(estado), orden);
+      const r = typeof bruto === 'string' ? { que: bruto } : bruto;
+      if (r.informe) estado.informes[r.informe.clave] = r.informe.datos;
+      hechas.push({ id: orden.id, que: r.que });
     } catch (err) {
       fallidas.push({ id: orden.id, por: err && err.message ? err.message : String(err) });
       if (estado.sesion && !estado.sesion.abierta) estado.sesion = null;
@@ -174,7 +242,15 @@ export async function unaVuelta(estado) {
     estado.hechas.add(String(orden.id));
   }
   if (nuevas.length) await guardarHechas(estado);
-  return { hechas, fallidas };
+
+  estado.vueltas++;
+  for (const h of hechas) estado.ultimas.push({ id: h.id, ok: true, que: h.que });
+  for (const f of fallidas) estado.ultimas.push({ id: f.id, ok: false, por: f.por });
+  let bitacora = null;
+  if ((hechas.length || fallidas.length) && CONFIG.bitacora && archivo.bitacora !== false) {
+    bitacora = await subirBitacora(estado);
+  }
+  return { hechas, fallidas, bitacora };
 }
 
 // ------------------------------------------------- programa
@@ -197,6 +273,11 @@ async function principal() {
       if (r.apagado && r.pendientes) decir(`apagado en el archivo; ${r.pendientes} orden(es) en espera`);
       for (const h of r.hechas) decir(`hecho [${h.id}] ${h.que}`);
       for (const f of r.fallidas) decir(`FALLA [${f.id}] ${f.por.split('\n')[0]}`);
+      if (r.bitacora && r.bitacora.error && !r.bitacora.repetido) {
+        decir(`no pude subir la bitacora: ${r.bitacora.error}`);
+      } else if (r.bitacora && r.bitacora.commit && !r.bitacora.sinCambios) {
+        decir(`bitacora subida a ${r.bitacora.rama} (${r.bitacora.commit.slice(0, 7)})`);
+      }
       ultimoFallo = '';
     } catch (err) {
       const texto = err && err.message ? err.message.split('\n')[0] : String(err);

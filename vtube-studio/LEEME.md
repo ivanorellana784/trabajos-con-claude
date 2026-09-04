@@ -99,6 +99,30 @@ Una orden es una línea de JSON con un `id` propio:
   que no se versiona; si una orden falla tampoco se reintenta, para que un error
   no se repita cada quince segundos.
 
+### El canal de vuelta
+
+El vigía no solo obedece: también cuenta lo que vio. Después de cada vuelta con
+resultados sube una **bitácora** a una rama aparte del repo, `vtube-bitacora`,
+que Claude sí puede leer desde la nube. Ahí van los últimos resultados —con sus
+errores tal cual— y el último vistazo a cada cosa.
+
+Para mirar algo y que quede en la bitácora:
+
+```json
+{ id: 0014, hacer: mirar, que: hotkeys }
+```
+
+Se puede mirar `estado`, `modelo`, `modelos`, `hotkeys`, `expresiones` e `items`.
+Con eso Claude deja de depender de que le leas la pantalla: mira tu configuración
+y actúa en consecuencia.
+
+**No toca tu copia de trabajo.** El commit se arma con plumbing de git
+—`hash-object`, `mktree`, `commit-tree`— y se empuja por sha, así que tu índice,
+tu rama y tus archivos a medias se quedan exactamente como estaban. Si no hay
+credenciales para empujar, lo dice una vez y sigue obedeciendo igual.
+
+Se apaga con `"bitacora": false` en `ordenes.json`, o con `VTS_BITACORA=no`.
+
 ### El interruptor
 
 ```json
@@ -185,6 +209,8 @@ puede probar entero sin abrir el programa:
 node pruebas/probar.mjs        # el cliente: permiso, hotkeys, expresiones, modelos, errores
 node pruebas/probar-mcp.mjs    # el servidor MCP: saludo, catálogo y llamadas reales
 node pruebas/probar-websocket.mjs  # el websocket propio: marcos, fragmentos, pings, cierres
+node pruebas/probar-remoto.mjs     # el vigía: lo nuevo se hace, lo viejo no se repite
+node pruebas/probar-bitacora.mjs   # el canal de vuelta, contra repos de git de verdad
 ```
 
 ## Cuando algo no va
