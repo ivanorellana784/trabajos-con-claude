@@ -151,6 +151,19 @@ console.log('\nVestir de huaso - pruebas\n');
   config.permisoImagenes = true;
 }
 
+// 7d. paneles abiertos: el mensaje de VTube Studio no dice que hacer
+{
+  config.ventanasAbiertas = true;
+  const { texto } = await correr('poner', 'huaso');
+  comprobar('repite la negativa de VTube Studio', texto.includes('config/item windows'));
+  comprobar('y anade que hacer con ella', texto.includes('Cierra los paneles'));
+  const r = await correr('comprobar');
+  comprobar('comprobar da la misma pista', r.texto.includes('Cierra los paneles'));
+  comprobar('y no lo confunde con falta de permiso',
+    !r.texto.includes('Load custom images": Ajustes'));
+  config.ventanasAbiertas = false;
+}
+
 // 8. el CLI sin ordenes se explica solo
 {
   const { texto, codigo } = await correr();

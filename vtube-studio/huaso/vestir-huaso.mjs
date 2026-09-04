@@ -33,6 +33,26 @@ export const PIEZAS = {
 const ACCESORIOS_SUELTOS = ['chupalla', 'chamanto', 'bigote', 'panuelo', 'espuela'];
 
 const salida = (texto) => console.log(texto);
+
+// VTube Studio explica bien QUE pasa, pero no QUE HACER. Estas son las tres
+// negativas que salen de verdad al cargar items, con su salida.
+function pista(mensaje = '') {
+  const m = mensaje.toLowerCase();
+  if (m.includes('config/item windows') || m.includes('cannot currently load items')) {
+    return 'Cierra los paneles que tengas abiertos dentro de VTube Studio\n' +
+           '(el boton Done del panel de permisos, y el buscador de items de\n' +
+           'abajo a la derecha). Con uno abierto, se niega a cargar nada.';
+  }
+  if (m.includes('permission')) {
+    return 'Enciende "Load custom images": Ajustes -> API -> plugin "Claude"\n' +
+           '-> su boton de config/permissions -> Done.';
+  }
+  if (m.includes('filename')) {
+    return 'El nombre del archivo no le vale: solo letras, numeros y guiones,\n' +
+           'terminado en .png y de 8 a 32 caracteres.';
+  }
+  return '';
+}
 // VTube Studio solo acepta nombres alfanumericos con guiones, terminados en
 // .png o .jpg y de 8 a 32 caracteres. El guion BAJO no vale: con el, la carga
 // falla con "Invalid filename provided".
@@ -134,10 +154,12 @@ async function comprobar(s) {
     salida('\n  Todo listo. Ya puedes:\n    node vestir-huaso.mjs poner huaso\n');
   } else {
     salida(`\n     VTube Studio dijo: ${motivo}`);
-    salida('\n  Enciendelo aqui:');
-    salida('    VTube Studio -> engranaje (Ajustes) -> pestana API');
-    salida('    -> plugin "Claude" -> su boton de config/permissions');
-    salida('    -> "Load custom images" encendido -> Done\n');
+    const ayuda = pista(motivo) ||
+      'Enciende "Load custom images": Ajustes -> API -> plugin "Claude"\n' +
+      '-> su boton de config/permissions -> Done.';
+    salida('');
+    for (const linea of ayuda.split('\n')) salida(`     ${linea}`);
+    salida('');
     process.exitCode = 1;
   }
 }
@@ -157,6 +179,8 @@ async function poner(s, piezas) {
       const [primera, ...resto] = err.message.split('\n');
       salida(`  ${pieza.padEnd(10)} FALLA -> ${primera}`);
       for (const linea of resto) salida(`             ${linea.trim()}`);
+      const ayuda = pista(err.message);
+      if (ayuda) for (const linea of ayuda.split('\n')) salida(`             ${linea}`);
     }
   }
   salida('\n  Arrastralas en VTube Studio para colocarlas a gusto.');

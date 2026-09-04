@@ -108,7 +108,7 @@ export const registro = [];
 export const ITEMS = [];
 // Se puede apagar desde la prueba para representar el permiso "Load custom
 // images" sin conceder, que es el fallo mas probable al otro lado.
-export const config = { permisoImagenes: true };
+export const config = { permisoImagenes: true, ventanasAbiertas: false };
 const MALLAS = ['Cabeza', 'PeloFrente', 'OjoIzq', 'OjoDer', 'Boca', 'Torso', 'BrazoIzq', 'BrazoDer'];
 let siguienteItem = 1;
 let tokenEmitido = 'token-de-mentira-123';
@@ -249,6 +249,12 @@ function atender(mensaje, sesion) {
           'between 8 and 32 characters long.');
       }
       if (!data.customDataBase64) return error(requestID, 152, 'Falta la imagen.');
+      // VTube Studio se niega a cargar items con sus paneles abiertos.
+      if (config.ventanasAbiertas) {
+        return error(requestID, 156,
+          'Cannot currently load items. This could be because the user has ' +
+          'certain config/item windows open.');
+      }
       if (!config.permisoImagenes) {
         return error(requestID, 155,
           'This plugin does not have permission to load custom images. ' +
