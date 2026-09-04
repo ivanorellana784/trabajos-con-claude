@@ -28,6 +28,17 @@ Entra como item: se ve en escena y sale en pantalla, pero no sigue a tu cara —
 para eso hace falta el avatar Live2D del camino largo. Se quita con
 `node vestir-huaso.mjs quitar`.
 
+## Si algo no carga
+
+```bash
+node vestir-huaso.mjs comprobar
+```
+
+Recorre la cadena entera —que VTube Studio responda, que el plugin tenga
+permiso, si hay modelo cargado y si el permiso de imágenes está concedido— y
+dice en qué eslabón se rompe. El cuarto no lo supone: carga una imagen de
+verdad y la quita.
+
 ## Camino corto: vestir de huaso al modelo que ya tienes
 
 No necesita Cubism ni saber nada de rigging. Mete las piezas en escena como

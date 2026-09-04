@@ -83,6 +83,65 @@ async function instanciaDe(s, pieza) {
   return encontrado.instanceID;
 }
 
+// Un PNG de 1x1 transparente. Sirve para probar el permiso de imagenes de
+// verdad -cargando una y quitandola- en vez de suponer que esta concedido.
+const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=';
+
+// Recorre la cadena entera y dice en que eslabon se rompe. Existe porque
+// "no carga nada" puede ser cinco cosas distintas y el mensaje suelto de
+// VTube Studio no siempre distingue cual.
+async function comprobar(s) {
+  const linea = (n, que, bien, nota = '') =>
+    salida(`  ${n}. ${que.padEnd(32)} ${bien ? 'si ' : 'NO '}  ${nota}`);
+
+  salida('\n  Comprobando la cadena entera\n');
+
+  const est = await s.pedir('APIStateRequest');
+  linea(1, 'VTube Studio responde', true, `version ${est.vTubeStudioVersion || '?'}`);
+  linea(2, 'El plugin tiene permiso', true, 'token guardado y aceptado');
+
+  const modelo = await modeloActual(s);
+  linea(3, 'Hay un modelo cargado', modelo.modelLoaded,
+    modelo.modelLoaded ? modelo.modelName : 'los items funcionan igual, pero no hay a quien clavarlos');
+
+  // El unico eslabon que no se puede dar por sabido: se prueba cargando.
+  let permiso = false, motivo = '';
+  try {
+    const r = await s.pedir('ItemLoadRequest', {
+      fileName: 'huaso-prueba.png',
+      positionX: 0, positionY: 0, size: 0.05, rotation: 0, fadeTime: 0,
+      order: 30, failIfOrderTaken: false, smoothing: 0,
+      censored: false, flipped: false, locked: false,
+      unloadWhenPluginDisconnects: true,
+      customDataBase64: PIXEL,
+      customDataAskUserFirst: true,
+      customDataSkipAskingUserIfWhitelisted: true,
+      customDataAskTimer: 20,
+    }, 30_000);
+    permiso = true;
+    await s.pedir('ItemUnloadRequest', {
+      unloadAllInScene: false, unloadAllLoadedByThisPlugin: false,
+      allowUnloadingItemsLoadedByUserOrOtherPlugins: false,
+      fileNames: [], instanceIDs: [r.instanceID],
+    });
+  } catch (err) {
+    motivo = err.message.split('\n')[0];
+  }
+  linea(4, 'Permiso "Load custom images"', permiso,
+    permiso ? 'probado de verdad: cargue una imagen y la quite' : '');
+
+  if (permiso) {
+    salida('\n  Todo listo. Ya puedes:\n    node vestir-huaso.mjs poner huaso\n');
+  } else {
+    salida(`\n     VTube Studio dijo: ${motivo}`);
+    salida('\n  Enciendelo aqui:');
+    salida('    VTube Studio -> engranaje (Ajustes) -> pestana API');
+    salida('    -> plugin "Claude" -> su boton de config/permissions');
+    salida('    -> "Load custom images" encendido -> Done\n');
+    process.exitCode = 1;
+  }
+}
+
 // ------------------------------------------------------------------ ordenes
 
 async function poner(s, piezas) {
@@ -170,6 +229,7 @@ async function clavar(s, pieza, malla, soltar = false) {
 const AYUDA = `
   Vestir de huaso al modelo cargado
 
+    node vestir-huaso.mjs comprobar              donde se rompe la cadena
     node vestir-huaso.mjs poner huaso            el huaso entero en escena
     node vestir-huaso.mjs poner                  los cinco accesorios
     node vestir-huaso.mjs poner chupalla bigote  solo esos
@@ -195,6 +255,7 @@ try {
   if (orden === 'poner') await poner(s, resto);
   else if (orden === 'quitar') await quitar(s, resto);
   else if (orden === 'mallas') await mallas(s);
+  else if (orden === 'comprobar') await comprobar(s);
   else if (orden === 'clavar') await clavar(s, resto[0], resto.slice(1).join(' '));
   else if (orden === 'soltar') await clavar(s, resto[0], '', true);
   else {

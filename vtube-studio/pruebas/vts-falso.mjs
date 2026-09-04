@@ -106,6 +106,9 @@ export const registro = [];
 
 // Items en escena y mallas del modelo: lo que necesita vestir-huaso.mjs.
 export const ITEMS = [];
+// Se puede apagar desde la prueba para representar el permiso "Load custom
+// images" sin conceder, que es el fallo mas probable al otro lado.
+export const config = { permisoImagenes: true };
 const MALLAS = ['Cabeza', 'PeloFrente', 'OjoIzq', 'OjoDer', 'Boca', 'Torso', 'BrazoIzq', 'BrazoDer'];
 let siguienteItem = 1;
 let tokenEmitido = 'token-de-mentira-123';
@@ -246,6 +249,11 @@ function atender(mensaje, sesion) {
           'between 8 and 32 characters long.');
       }
       if (!data.customDataBase64) return error(requestID, 152, 'Falta la imagen.');
+      if (!config.permisoImagenes) {
+        return error(requestID, 155,
+          'This plugin does not have permission to load custom images. ' +
+          'Grant it in the VTube Studio API settings.');
+      }
       // VTube Studio no acepta imagenes de cualquier tamano.
       if (data.customDataBase64.length > 8_000_000) {
         return error(requestID, 900, 'La imagen pasa del limite.');

@@ -9,7 +9,7 @@ import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { arrancar, ITEMS } from './vts-falso.mjs';
+import { arrancar, ITEMS, config } from './vts-falso.mjs';
 
 const PUERTO = 8934;
 const TOKEN = join(tmpdir(), `vts-huaso-prueba-${process.pid}.json`);
@@ -126,6 +126,29 @@ console.log('\nVestir de huaso - pruebas\n');
   comprobar('clavar algo que no esta puesto explica como ponerlo',
     texto.includes('poner chamanto'), '');
   comprobar('y sale con codigo de fallo', codigo === 1);
+}
+
+// 7b. comprobar: el diagnostico de la cadena
+{
+  const { texto, codigo } = await correr('comprobar');
+  comprobar('comprobar recorre los cuatro eslabones',
+    ['VTube Studio responde', 'tiene permiso', 'modelo cargado', 'Load custom images']
+      .every((t) => texto.includes(t)));
+  comprobar('prueba el permiso de verdad, no lo supone', texto.includes('cargue una imagen y la quite'));
+  comprobar('no deja basura en escena', !ITEMS.some((i) => i.fileName === 'huaso-prueba.png'));
+  comprobar('con todo bien, dice el siguiente paso', texto.includes('poner huaso') && codigo === 0);
+}
+
+// 7c. comprobar cuando falta el permiso: el caso que importa
+{
+  config.permisoImagenes = false;
+  const { texto, codigo } = await correr('comprobar');
+  comprobar('sin permiso lo marca como NO', /Load custom images"\s+NO/.test(texto));
+  comprobar('repite lo que dijo VTube Studio', texto.includes('does not have permission'));
+  comprobar('y dice donde encenderlo', texto.includes('Config/Permissions')
+    || texto.includes('config/permissions'));
+  comprobar('sale con codigo de fallo', codigo === 1);
+  config.permisoImagenes = true;
 }
 
 // 8. el CLI sin ordenes se explica solo
