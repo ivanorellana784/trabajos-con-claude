@@ -1,0 +1,220 @@
+// Pruebas del vigia: que obedezca lo nuevo, que no repita lo viejo, y que una
+// orden rota no se convierta en un bucle de fallos cada quince segundos.
+//   node pruebas/probar-remoto.mjs
+import { writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { arrancar, registro, MOVIMIENTOS, INYECCIONES, POSICION } from './vts-falso.mjs';
+
+const PUERTO = 8936;
+const ORDENES = join(tmpdir(), `vts-ordenes-${process.pid}.json`);
+const HECHAS = join(tmpdir(), `vts-hechas-${process.pid}.json`);
+
+process.env.VTS_URL = `ws://127.0.0.1:${PUERTO}`;
+process.env.VTS_TOKEN = join(tmpdir(), `vts-token-remoto-${process.pid}.json`);
+process.env.VTS_ORDENES_ARCHIVO = ORDENES;
+process.env.VTS_HECHAS = HECHAS;
+// Sin esto la prueba empuja su bitacora de mentira al repo de verdad.
+process.env.VTS_BITACORA = 'no';
+const FRASES = join(tmpdir(), `vts-frases-${process.pid}.json`);
+process.env.HUASO_FRASES = FRASES;
+await writeFile(FRASES, JSON.stringify({ frases: { hola: 'hola' } }), 'utf8');
+
+const servidor = await arrancar(PUERTO);
+const vigia = await import('../remoto/escucha.mjs');
+const verbos = await import('../remoto/verbos.mjs');
+import { utimes } from 'node:fs/promises';
+
+let fallos = 0;
+function comprobar(que, condicion, detalle = '') {
+  if (!condicion) fallos++;
+  console.log(`  ${condicion ? 'ok  ' : 'FALLA'} ${que}${detalle ? `  ->  ${detalle}` : ''}`);
+}
+
+const escribir = (ordenes, extra = {}) =>
+  writeFile(ORDENES, JSON.stringify({ version: 1, encendido: true, ordenes, ...extra }, null, 2), 'utf8');
+
+console.log('\nVigia de ordenes - pruebas\n');
+
+// 1. la primera vuelta no repite el pasado
+{
+  await escribir([{ id: 'vieja-1', hacer: 'disparar', que: 'Saludo' }]);
+  const estado = await vigia.arrancarEstado();
+  registro.length = 0;
+  const r = await vigia.unaVuelta(estado);
+  comprobar('la primera vuelta se pone al dia sin ejecutar nada', r.alDia === 1 && !registro.includes('HotkeyTriggerRequest'));
+}
+
+// 2. lo nuevo si se hace, y una sola vez
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([
+    { id: 'vieja-1', hacer: 'disparar', que: 'Saludo' },
+    { id: 'nueva-1', hacer: 'disparar', que: 'Sonrojo' },
+  ]);
+  registro.length = 0;
+  const r = await vigia.unaVuelta(estado);
+  comprobar('ejecuta la orden nueva', r.hechas.length === 1 && r.hechas[0].que.includes('Sonrojo'), r.hechas[0] && r.hechas[0].que);
+  comprobar('y no toca la que ya estaba', r.hechas.every((h) => h.id !== 'vieja-1'));
+
+  const segunda = await vigia.unaVuelta(estado);
+  comprobar('a la vuelta siguiente no la repite', segunda.hechas.length === 0);
+}
+
+// 3. el estado sobrevive a un reinicio
+{
+  const estado = await vigia.arrancarEstado();
+  const r = await vigia.unaVuelta(estado);
+  comprobar('tras reiniciar, recuerda lo ya hecho', r.hechas.length === 0 && r.alDia === undefined);
+}
+
+// 4. expresiones y modelos
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([
+    { id: 'exp-1', hacer: 'expresion', que: 'Sonrojo', activar: true },
+    { id: 'mov-1', hacer: 'mover', x: 0.3, tam: 12 },
+    { id: 'mod-1', hacer: 'cargar', que: 'zorro' },
+    { id: 'cru-1', hacer: 'crudo', tipo: 'StatisticsRequest' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('hace las cuatro clases de orden', r.hechas.length === 4 && r.fallidas.length === 0, r.hechas.map((h) => h.id).join(', '));
+  comprobar('la expresion queda puesta de verdad', r.hechas[0].que.includes('puesta'));
+}
+
+// 5. el interruptor remoto
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([{ id: 'apagada-1', hacer: 'disparar', que: 'Saludo' }], { encendido: false });
+  registro.length = 0;
+  const r = await vigia.unaVuelta(estado);
+  comprobar('con "encendido": false no ejecuta nada', r.apagado === true && !registro.includes('HotkeyTriggerRequest'));
+  comprobar('pero avisa de lo que quedo esperando', r.pendientes === 1);
+
+  await escribir([{ id: 'apagada-1', hacer: 'disparar', que: 'Saludo' }]);
+  const despues = await vigia.unaVuelta(estado);
+  comprobar('al volver a encender, lo pendiente se hace', despues.hechas.length === 1);
+}
+
+// 6. ordenes rotas: se reportan y no se reintentan en bucle
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([
+    { id: 'rota-1', hacer: 'volar', que: 'alto' },
+    { id: 'rota-2', hacer: 'disparar', que: 'no existe esta hotkey' },
+    { id: 'rota-3', hacer: 'vestir', que: 'rm -rf' },
+    { id: 'buena-1', hacer: 'disparar', que: 'Saludo' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('las tres rotas fallan por separado', r.fallidas.length === 3, r.fallidas.map((f) => f.id).join(', '));
+  comprobar('una orden desconocida se explica', (r.fallidas.find((f) => f.id === 'rota-1') || {}).por.includes('volar'));
+  comprobar('la hotkey inexistente dice cuales hay', (r.fallidas.find((f) => f.id === 'rota-2') || {}).por.includes('Saludo'));
+  comprobar('vestir solo acepta su lista de ordenes', (r.fallidas.find((f) => f.id === 'rota-3') || {}).por.includes('no es una orden de vestir-huaso'));
+  comprobar('una orden rota no impide las siguientes', r.hechas.length === 1 && r.hechas[0].id === 'buena-1');
+
+  const otra = await vigia.unaVuelta(estado);
+  comprobar('y las rotas no se reintentan cada vuelta', otra.hechas.length === 0 && otra.fallidas.length === 0);
+  comprobar('pero la de verbo desconocido queda pendiente, no hecha', !estado.hechas.has('rota-1') && estado.esperando.has('rota-1'));
+  comprobar('mientras que las otras rotas si se dan por hechas', estado.hechas.has('rota-2') && estado.hechas.has('rota-3'));
+}
+
+// 7. bailar y hablar, que salen a programas aparte
+{
+  const estado = await vigia.arrancarEstado();
+  const partida = { ...POSICION };
+  MOVIMIENTOS.length = 0;
+  INYECCIONES.length = 0;
+  await escribir([
+    { id: 'baile-1', hacer: 'bailar', veces: 1, bpm: 300 },
+    { id: 'habla-1', hacer: 'hablar', frase: 'hola' },
+    { id: 'habla-2', hacer: 'hablar', texto: 'hola' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+
+  comprobar('el baile llega hasta VTube Studio', MOVIMIENTOS.length > 5, `${MOVIMIENTOS.length} movimientos`);
+  const final = MOVIMIENTOS[MOVIMIENTOS.length - 1];
+  comprobar(
+    'y vuelve a dejar el modelo donde estaba',
+    final.x === partida.x && final.y === partida.y && final.giro === partida.giro && final.tam === partida.tam,
+    `partia de x=${partida.x}, quedo en x=${final.x}`
+  );
+  comprobar('la frase mueve la boca', INYECCIONES.some((i) => i.id === 'MouthOpen'), `${INYECCIONES.length} gestos`);
+  comprobar('el texto suelto tambien llega a decirse', (r.hechas.find((h) => h.id === 'habla-2') || {}).que !== undefined, (r.fallidas.find((f) => f.id === 'habla-2') || {}).por);
+  comprobar('las tres ordenes se dan por hechas', r.hechas.length === 3 && r.fallidas.length === 0, (r.fallidas[0] || {}).por);
+}
+
+// 8. y no aceptan cualquier cosa
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([
+    { id: 'baile-malo', hacer: 'bailar', veces: 99 },
+    { id: 'baile-lento', hacer: 'bailar', bpm: 5 },
+    { id: 'habla-vacia', hacer: 'hablar' },
+  ]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('las tres ordenes mal puestas fallan', r.fallidas.length === 3, r.fallidas.map((f) => f.id).join(', '));
+  comprobar('y cada una dice su motivo', r.fallidas.every((f) => f.por && f.por.length > 10));
+  comprobar('99 vueltas no se bailan', (r.fallidas.find((f) => f.id === 'baile-malo') || {}).por.includes('1 a 8'));
+}
+
+// 9. las ordenes que no hablan con VTube Studio no lo exigen abierto
+{
+  const cerrado = () => {
+    throw new Error('VTube Studio cerrado (de mentira)');
+  };
+  let que = '';
+  try {
+    que = await verbos.aplicar(cerrado, { hacer: 'hablar', texto: 'hola' });
+  } catch (err) {
+    que = 'FALLO: ' + err.message;
+  }
+  comprobar('hablar no pide la sesion del vigia (usa la suya)', !que.startsWith('FALLO'), que);
+
+  let motivo = '';
+  try {
+    await verbos.aplicar(cerrado, { hacer: 'disparar', que: 'Saludo' });
+  } catch (err) {
+    motivo = err.message;
+  }
+  comprobar('disparar si la pide, y falla claro si no hay', motivo.includes('cerrado'));
+}
+
+// 10. mirar las mallas, que es lo que hace falta para clavar
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([{ id: 'mira-mallas', hacer: 'mirar', que: 'mallas' }]);
+  const r = await vigia.unaVuelta(estado);
+  comprobar('mirar mallas sale bien', r.hechas.length === 1, (r.fallidas[0] || {}).por);
+  comprobar('y deja la lista en el informe', Array.isArray((estado.informes.mallas || {}).artMeshNames) && estado.informes.mallas.artMeshNames.includes('Cabeza'));
+}
+
+// 11. los verbos se recargan cuando cambia el archivo
+{
+  const uno = await vigia.cargarVerbos();
+  const dos = await vigia.cargarVerbos();
+  comprobar('sin cambios, devuelve el mismo modulo', uno === dos);
+  const ruta = new URL('../remoto/verbos.mjs', import.meta.url);
+  const luego = new Date(Date.now() + 5000);
+  await utimes(ruta, luego, luego);
+  const tres = await vigia.cargarVerbos();
+  comprobar('si el archivo cambia, carga uno nuevo', tres !== uno && typeof tres.aplicar === 'function');
+  const ahora = new Date();
+  await utimes(ruta, ahora, ahora);
+}
+
+// 12. ordenes sin id: se ignoran en vez de repetirse para siempre
+{
+  const estado = await vigia.arrancarEstado();
+  await escribir([{ hacer: 'disparar', que: 'Saludo' }]);
+  registro.length = 0;
+  const r = await vigia.unaVuelta(estado);
+  comprobar('una orden sin id no se ejecuta', r.hechas.length === 0 && !registro.includes('HotkeyTriggerRequest'));
+}
+
+await rm(FRASES, { force: true });
+await rm(ORDENES, { force: true });
+await rm(HECHAS, { force: true });
+await rm(process.env.VTS_TOKEN, { force: true });
+servidor.close();
+console.log(fallos === 0 ? '\n  Todo en orden.\n' : `\n  ${fallos} fallo(s).\n`);
+process.exit(fallos === 0 ? 0 : 1);

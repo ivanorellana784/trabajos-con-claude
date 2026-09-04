@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "nota": "El repertorio del huaso. Claude lo edita desde la nube y el vigia lo dice en voz alta aqui. Anade las tuyas: la clave es el nombre corto con el que se pide.",
+  "frases": {
+    "saludo": "Buenas tardes tengan ustedes. Soy el huaso, para servirle.",
+    "presentacion": "Me hicieron con codigo, capa por capa, y aqui me tienen: chupalla, chamanto y espuelas.",
+    "cueca": "Ya pues, saquemos los panuelos, que esta cueca no se baila sola.",
+    "despedida": "Me voy retirando, pero vuelvo cuando me llamen.",
+    "chiste": "Dicen que soy de mentira. Yo digo que soy de codigo, que es distinto."
+  }
+}
