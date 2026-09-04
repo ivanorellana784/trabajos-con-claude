@@ -1,26 +1,21 @@
 {
-  "cuando": "2026-09-04T18:38:32.135Z",
-  "vueltas": 1,
+  "cuando": "2026-09-04T19:27:37.393Z",
+  "vueltas": 34,
   "ultimas": [
     {
-      "id": "buena-1",
+      "id": "arreglo-1",
       "ok": true,
-      "que": "hotkey \"Saludo\""
+      "que": "repo al dia ( 6 files changed, 100 insertions(+), 25 deletions(-))"
     },
     {
-      "id": "rota-1",
-      "ok": false,
-      "por": "no se que es \"bailar\""
+      "id": "voz-1",
+      "ok": true,
+      "que": "  82 gestos de boca, sin voz."
     },
     {
-      "id": "rota-2",
-      "ok": false,
-      "por": "No encontre la hotkey \"no existe esta hotkey\".\nHay estos:\n  - Saludo\n  - Sonrojo"
-    },
-    {
-      "id": "rota-3",
-      "ok": false,
-      "por": "\"rm -rf\" no es una orden de vestir-huaso (poner, quitar, mallas, comprobar, clavar, soltar)"
+      "id": "baile-huaso-1",
+      "ok": true,
+      "que": "  Listo: 13 pasos."
     }
   ],
   "informes": {}
