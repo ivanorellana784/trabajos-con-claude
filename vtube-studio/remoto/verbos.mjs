@@ -47,11 +47,21 @@ async function vestir(orden) {
 // que el texto de una frase puede traer comillas, acentos y signos sin peligro.
 async function correrHuaso(guion, args, minutos = 5) {
   const camino = join(CONFIG.repo, 'vtube-studio', 'huaso', guion);
-  const { stdout } = await ejecutar(process.execPath, [camino, ...args], {
-    maxBuffer: 8_000_000,
-    timeout: minutos * 60_000,
-  });
-  return stdout.trim().split('\n').filter(Boolean).pop() || 'hecho';
+  const ultimaLinea = (texto) => String(texto || '').trim().split('\n').filter(Boolean).pop() || '';
+  try {
+    const { stdout } = await ejecutar(process.execPath, [camino, ...args], {
+      maxBuffer: 8_000_000,
+      timeout: minutos * 60_000,
+    });
+    return ultimaLinea(stdout) || 'hecho';
+  } catch (err) {
+    // Cuando el programa sale con error, execFile rechaza con un "Command
+    // failed" seco, pero la razon de verdad -la que el propio programa
+    // imprimio con salida()- va en err.stdout / err.stderr. Sin esto, la
+    // bitacora contaba "Command failed" y nos dejaba a ciegas.
+    const motivo = ultimaLinea(err.stderr) || ultimaLinea(err.stdout);
+    throw new Error(motivo || (err && err.message ? err.message : String(err)));
+  }
 }
 
 // Entre 1 y 8 vueltas, y a un compas de musica de verdad: fuera de ahi es una
