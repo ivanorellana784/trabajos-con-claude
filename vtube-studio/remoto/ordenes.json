@@ -46,6 +46,17 @@
       "que": "clavar",
       "tam": 0.9,
       "y": -0.05
+    },
+    {
+      "id": "act-hoy",
+      "hacer": "actualizar"
+    },
+    {
+      "id": "clavar-cara-3",
+      "hacer": "titere",
+      "que": "clavar",
+      "tam": 0.9,
+      "y": -0.05
     }
   ]
 }
