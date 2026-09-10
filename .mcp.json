@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vtube": {
+      "command": "node",
+      "args": ["vtube-studio/mcp.mjs"]
+    }
+  }
+}
