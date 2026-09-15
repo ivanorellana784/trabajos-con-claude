@@ -1,5 +1,23 @@
 # Reglas de trabajo con Claude
 
+## 0. Lo primero que hay que entender: Portal-Wiki corre en el PC, no en la nube
+
+Las tres sesiones de la tabla de abajo son de tipo `claude_code_cli` / bridge: **corren en el
+computador de Ivan**, con las credenciales de git de esa maquina. No corren en la nube.
+
+De ahi salen las dos confusiones que ya costaron dos incidentes:
+
+- **Tener git conectado en el PC no le sirve a una sesion de la nube.** Son permisos
+  distintos: el PC usa las credenciales locales; la nube usa la seleccion de repositorios
+  de la Claude GitHub App sobre la organizacion `Holding-Wiki`. Verificado el 15-09-2026:
+  desde la nube, cualquier intento de tocar Portal-Wiki responde `github_repo_access_denied`.
+- **Cuando el PC se desconecta, estas sesiones quedan huerfanas y terminan archivadas.**
+  Eso paso el 13-09-2026, y antes tambien. No lo hizo una persona ni una sesion de Claude.
+
+Por eso, para trabajar asistencia o uniformes: **abrir Claude Code en el computador** y dejarlo
+abierto, tal como dice `turno-noche/LEEME.md`. Las sesiones se reconectan solas con el repo ya
+clonado en disco.
+
 ## 1. Nunca archivar las sesiones de Portal-Wiki
 
 **Regla permanente, sin excepciones.** Las sesiones de las apps **Pauta de Asistencia** y
@@ -27,18 +45,21 @@ Son dos causas distintas que se ven igual. Hay que distinguirlas antes de tocar 
 **a) La sesion fue archivada.** Se arregla desde aqui: `unarchive_session` con el ID de la
 tabla de arriba. La sesion vuelve con todo su historial y su rama intactos.
 
-**b) GitHub le quito el permiso a Claude sobre el repo.** Sintoma: cualquier intento de
-conectarse responde `github_repo_access_denied`. **Esto no se arregla desde la sesion** —
-es permiso a nivel de organizacion, y ninguna sesion de Claude puede quitarlo ni
-devolverlo. Lo tiene que hacer un administrador de `Holding-Wiki`:
+**b) Se esta intentando llegar a Portal-Wiki desde la nube.** Sintoma:
+`github_repo_access_denied`. **Esto no se arregla desde la sesion** — la Claude GitHub App no
+tiene el repo en su seleccion, y eso es permiso a nivel de organizacion. Dos salidas:
 
-- GitHub -> Settings de la organizacion `Holding-Wiki` -> GitHub Apps -> Claude ->
-  Repository access -> incluir `Portal-Wiki`. Conviene dejar **"All repositories"** para
-  que no se repita cada vez que caduque o se reinstale la app.
-- Alternativa del lado de Claude: reconectar GitHub en claude.ai -> Settings -> Connectors.
-- Permisos de repos por organizacion: https://claude.ai/admin-settings/claude-tag
+- *La rapida:* no usar la nube. Abrir Claude Code en el computador y reconectar las sesiones
+  de la tabla, que ya tienen el repo clonado y las credenciales locales.
+- *La de fondo:* que un **owner** de `Holding-Wiki` entre a
+  https://github.com/organizations/Holding-Wiki/settings/installations -> Claude ->
+  Configure -> Repository access -> dejarlo en **"All repositories"** (mejor que marcar
+  repos uno por uno: asi no se vuelve a caer cuando se reinstale o caduque la app).
+  Si Ivan no es owner de la organizacion, esto se lo tiene que pedir a quien lo sea.
+- Permisos de repos por organizacion, del lado de Claude:
+  https://claude.ai/admin-settings/claude-tag
 
-Mientras el permiso no este puesto, el repo no se puede clonar por mas sesiones que se abran.
+Mientras el permiso no este puesto, ninguna sesion de la nube puede clonar el repo.
 
 ## 3. Portal-Wiki no se mezcla con los repos de `ivanorellana784`
 
